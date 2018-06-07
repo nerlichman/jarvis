@@ -1,11 +1,9 @@
 package fr.zelus.jarvis.io;
 
-import fr.inria.atlanmod.commons.log.Log;
 import fr.zelus.jarvis.core.JarvisException;
 
 import javax.sound.sampled.*;
 import java.util.Observable;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
