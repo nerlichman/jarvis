@@ -4,15 +4,16 @@ import fr.inria.atlanmod.commons.log.Log;
 import fr.zelus.jarvis.intent.RecognizedIntent;
 import fr.zelus.jarvis.module.Action;
 import fr.zelus.jarvis.module.Parameter;
+import fr.zelus.jarvis.orchestration.ActionInstance;
+import fr.zelus.jarvis.orchestration.ParameterValue;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.StreamSupport;
 
+import static fr.inria.atlanmod.commons.Preconditions.checkNotNull;
 import static java.util.Objects.isNull;
 
 /**
@@ -29,54 +30,124 @@ import static java.util.Objects.isNull;
  */
 public abstract class JarvisModule {
 
-    protected Map<String, Class<JarvisAction>> actionMap;
+    /**
+     * Tha {@link Map} containing the {@link JarvisAction} associated to this module.
+     * <p>
+     * This {@link Map} is used as a cache to retrieve {@link JarvisAction} that have been previously loaded.
+     *
+     * @see #enableAction(Action)
+     * @see #disableAction(Action)
+     * @see #createJarvisAction(ActionInstance, RecognizedIntent)
+     */
+    protected Map<String, Class<? extends JarvisAction>> actionMap;
 
+    /**
+     * Constructs a new {@link JarvisModule} and initializes its {@link #actionMap}.
+     */
     public JarvisModule() {
         this.actionMap = new HashMap<>();
     }
 
+    /**
+     * Returns the name of the module.
+     * <p>
+     * This method returns the value of {@link Class#getSimpleName()}, and can not be overridden by concrete
+     * subclasses. {@link JarvisModule}'s names are part of jarvis' naming convention, and are used to dynamically
+     * load modules and actions.
+     *
+     * @return the name of the module.
+     */
     public final String getName() {
         return this.getClass().getSimpleName();
     }
 
+    /**
+     * Retrieves and loads the {@link JarvisAction} defined by the provided {@link Action}.
+     * <p>
+     * This method loads the corresponding {@link JarvisAction} based on jarvis' naming convention. The
+     * {@link JarvisAction} must be located under the {@code action} sub-package of the {@link JarvisModule}
+     * concrete subclass package (see {@link #loadJarvisActionClass(Action)}).
+     *
+     * @param action the {@link Action} definition representing the {@link JarvisAction} to enable
+     * @see #loadJarvisActionClass(Action)
+     */
     public final void enableAction(Action action) {
         Class<JarvisAction> jarvisAction = this.loadJarvisActionClass(action);
         actionMap.put(jarvisAction.getSimpleName(), jarvisAction);
     }
 
+    /**
+     * Disables the {@link JarvisAction} defined by the provided {@link Action}.
+     *
+     * @param action the {@link Action} definition representing the {@link JarvisAction} to disable
+     */
     public final void disableAction(Action action) {
         actionMap.remove(this.loadJarvisActionClass(action).getSimpleName());
     }
 
+    /**
+     * Disables all the {@link JarvisAction}s of the {@link JarvisModule}.
+     */
     public final void disableAllActions() {
         actionMap.clear();
     }
 
-    public final Collection<Class<JarvisAction>> getActions() {
+    /**
+     * Returns all the {@link JarvisAction} {@link Class}es associated to this {@link JarvisModule}.
+     * <p>
+     * This method returns the {@link Class}es describing the {@link JarvisAction}s associated to this module. To
+     * construct a new {@link JarvisAction} from a {@link RecognizedIntent} see
+     * {@link #createJarvisAction(ActionInstance, RecognizedIntent)} .
+     *
+     * @return all the {@link JarvisAction} {@link Class}es associated to this {@link JarvisModule}
+     * @see #createJarvisAction(ActionInstance, RecognizedIntent)
+     */
+    public final Collection<Class<? extends JarvisAction>> getActions() {
         return actionMap.values();
     }
 
-    public JarvisAction createJarvisAction(Action action, RecognizedIntent intent) {
-        Class<JarvisAction> jarvisActionClass = actionMap.get(action.getName());
-        if(isNull(jarvisActionClass)) {
-            throw new JarvisException("Cannot create the JarvisAction {0}, the action is not loaded in the module");
+    /**
+     * Creates a new {@link JarvisAction} instance from the provided {@link RecognizedIntent}.
+     * <p>
+     * This methods attempts to construct a {@link JarvisAction} defined by the provided {@code actionInstance} by
+     * matching the {@code intent} variables to the {@link Action}'s parameters, and reusing the provided
+     * {@link ActionInstance#getValues()}.
+     *
+     * @param actionInstance the {@link ActionInstance} representing the {@link JarvisAction} to create
+     * @param intent the {@link RecognizedIntent} containing the extracted variables
+     * @return a new {@link JarvisAction} instance from the provided {@link RecognizedIntent}
+     * @throws JarvisException if the provided {@link Action} does not match any {@link JarvisAction}, or if the
+     *                         provided {@link RecognizedIntent} does not define all the parameters required by the
+     *                         action's constructor
+     * @see #getParameterValues(ActionInstance, RecognizedIntent)
+     */
+    public JarvisAction createJarvisAction(ActionInstance actionInstance, RecognizedIntent intent) {
+        checkNotNull(actionInstance, "Cannot construct a JarvisAction from a null ActionInstance");
+        Action action = actionInstance.getAction();
+        checkNotNull(intent, "Cannot construct a %s action from a null RecognizedIntent", action.getName());
+        Class<? extends JarvisAction> jarvisActionClass = actionMap.get(action.getName());
+        if (isNull(jarvisActionClass)) {
+            throw new JarvisException(MessageFormat.format("Cannot create the JarvisAction {0}, the action is not loaded " +
+                    "in the module", action.getName()));
         }
-        Object[] parameterValues = getParameterValues(action, intent);
+        Object[] parameterValues = getParameterValues(actionInstance, intent);
         Constructor<?>[] constructorList = jarvisActionClass.getConstructors();
-        for(int i = 0; i < constructorList.length; i++) {
+        for (int i = 0; i < constructorList.length; i++) {
             Constructor<?> constructor = constructorList[i];
-            if(constructor.getParameterCount() == parameterValues.length) {
+            if (constructor.getParameterCount() == parameterValues.length) {
                 /*
                  * The following code assumes that all the Action parameters are instances of String, this should be
                  * fixed by supporting the types returned by the DialogFlow API.
                  */
                 try {
-                    if(constructor.getParameterCount() > 0) {
+                    if (constructor.getParameterCount() > 0) {
+                        Log.info("Constructing {0} with the parameters {1}", jarvisActionClass.getSimpleName(), parameterValues);
                         return (JarvisAction) constructor.newInstance(parameterValues);
                     } else {
+                        Log.info("Constructing {0}", jarvisActionClass.getSimpleName());
                         return (JarvisAction) constructor.newInstance();
                     }
-                } catch(InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
                     String errorMessage = MessageFormat.format("Cannot construct the JarvisAction {0}",
                             jarvisActionClass.getSimpleName());
                     Log.error(errorMessage);
@@ -90,18 +161,42 @@ public abstract class JarvisModule {
         throw new JarvisException(errorMessage);
     }
 
-    private Object[] getParameterValues(Action action, RecognizedIntent intent) {
+    /**
+     * Match the {@link RecognizedIntent}'s variable to the provided {@link Action}'s parameters.
+     * <p>
+     * This method checks that the provided {@code intent} contains all the variables that are required by the
+     * {@link Action} definition that are not already defined in the {@link ActionInstance#getValues()} list, and
+     * returns them.
+     *
+     * @param actionInstance the {@link Action} definition to match the parameters from
+     * @param intent the {@link RecognizedIntent} to match the variables from
+     * @return an array containing the {@link Action}'s parameters
+     * @throws JarvisException if the provided {@link RecognizedIntent} does not define all the parameters required
+     *                         by the action's constructor
+     * @see #createJarvisAction(ActionInstance, RecognizedIntent)
+     */
+    private Object[] getParameterValues(ActionInstance actionInstance, RecognizedIntent intent) {
+        Action action = actionInstance.getAction();
         List<Parameter> actionParameters = action.getParameters();
+        List<ParameterValue> actionInstanceParameterValues = actionInstance.getValues();
         List<String> outContextValues = intent.getOutContextValues();
-        if(actionParameters.size() == outContextValues.size()) {
+        if ((actionParameters.size() - actionInstanceParameterValues.size()) == outContextValues.size()) {
             /*
-             * Here some additional checks are needed (parameter types and order)
+             * Here some additional checks are needed (parameter types and order).
+             * See https://github.com/gdaniel/jarvis/issues/4.
              */
-            return outContextValues.toArray();
+            int parameterLength = actionInstanceParameterValues.size() + outContextValues.size();
+            Object[] actionInstanceParameterValuesArray = StreamSupport.stream(actionInstanceParameterValues
+                    .spliterator(), false).map(param -> param.getValue()).toArray();
+            Object[] parameterArray = Arrays.copyOf(actionInstanceParameterValuesArray, parameterLength);
+            System.arraycopy(outContextValues.toArray(), 0, parameterArray, actionInstanceParameterValues.size(),
+                    parameterLength -1);
+            return parameterArray;
         }
         /*
          * It should be possible to return an array if the provided intent contains more context values than the
          * Action signature.
+         * See https://github.com/gdaniel/jarvis/issues/5.
          */
         String errorMessage = MessageFormat.format("The intent does not define the good amount of context values: " +
                 "expected {0}, found {1}", actionParameters.size(), outContextValues.size());
@@ -109,6 +204,17 @@ public abstract class JarvisModule {
         throw new JarvisException(errorMessage);
     }
 
+    /**
+     * Loads the {@link JarvisAction} defined by the provided {@code action}.
+     * <p>
+     * This method loads the corresponding {@link JarvisAction} based on jarvis' naming convention. The
+     * {@link JarvisAction} must be located under the {@code action} sub-package of the {@link JarvisModule}
+     * concrete subclass package.
+     *
+     * @param action the {@link Action} definition representing the {@link JarvisAction} to load
+     * @return the {@link Class} representing the loaded {@link JarvisAction}
+     * @throws JarvisException if the {@link JarvisAction} can not be loaded
+     */
     private Class<JarvisAction> loadJarvisActionClass(Action action) {
         /*
          * Ensures the Action is in the same package, under the Action/ subpackage
@@ -116,7 +222,7 @@ public abstract class JarvisModule {
         String actionQualifiedName = this.getClass().getPackage().getName() + ".action." + action.getName();
         try {
             return (Class<JarvisAction>) Class.forName(actionQualifiedName);
-        } catch(ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
             String errorMessage = MessageFormat.format("Cannot load the Action {0} with the qualified name {1}",
                     action.getName(), actionQualifiedName);
             Log.error(errorMessage);

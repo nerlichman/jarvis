@@ -6,13 +6,23 @@ import fr.zelus.jarvis.intent.IntentFactory;
 import fr.zelus.jarvis.module.Action;
 import fr.zelus.jarvis.module.Module;
 import fr.zelus.jarvis.module.ModuleFactory;
+import fr.zelus.jarvis.orchestration.ActionInstance;
 import fr.zelus.jarvis.orchestration.OrchestrationFactory;
 import fr.zelus.jarvis.orchestration.OrchestrationLink;
 import fr.zelus.jarvis.orchestration.OrchestrationModel;
 import fr.zelus.jarvis.stubs.StubJarvisModule;
+import org.apache.commons.configuration2.BaseConfiguration;
+import org.apache.commons.configuration2.Configuration;
 import org.assertj.core.api.JUnitSoftAssertions;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.junit.*;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.Objects.nonNull;
@@ -29,7 +39,7 @@ public class JarvisCoreTest {
     protected JarvisCore jarvisCore;
 
     @BeforeClass
-    public static void setUpBeforeClass() {
+    public static void setUpBeforeClass() throws IOException {
         Module stubModule = ModuleFactory.eINSTANCE.createModule();
         stubModule.setName("StubJarvisModule");
         stubModule.setJarvisModulePath("fr.zelus.jarvis.stubs.StubJarvisModule");
@@ -44,8 +54,28 @@ public class JarvisCoreTest {
         VALID_ORCHESTRATION_MODEL = OrchestrationFactory.eINSTANCE.createOrchestrationModel();
         OrchestrationLink link = OrchestrationFactory.eINSTANCE.createOrchestrationLink();
         link.setIntent(stubIntentDefinition);
-        link.getActions().add(stubAction);
+        ActionInstance actionInstance = OrchestrationFactory.eINSTANCE.createActionInstance();
+        actionInstance.setAction(stubAction);
+        link.getActions().add(actionInstance);
         VALID_ORCHESTRATION_MODEL.getOrchestrationLinks().add(link);
+        /*
+         * Create the Resource used to store the valid orchestration model.
+         */
+        ResourceSet testResourceSet = new ResourceSetImpl();
+        testResourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl
+                ());
+
+        Resource testIntentResource = testResourceSet.createResource(URI.createURI("/tmp/jarvisTestIntentResource" +
+                ".xmi"));
+        testIntentResource.getContents().clear();
+        testIntentResource.getContents().add(stubModule);
+        testIntentResource.save(Collections.emptyMap());
+
+        Resource testOrchestrationResource = testResourceSet.createResource(URI.createURI
+                ("/tmp/jarvisTestOrchestrationResource.xmi"));
+        testOrchestrationResource.getContents().clear();
+        testOrchestrationResource.getContents().add(VALID_ORCHESTRATION_MODEL);
+        testOrchestrationResource.save(Collections.emptyMap());
     }
 
     @Before
@@ -73,6 +103,45 @@ public class JarvisCoreTest {
     }
 
     @Test(expected = NullPointerException.class)
+    public void constructNullConfiguration() {
+        new JarvisCore(null);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void constructMissingProjectIdInConfiguration() {
+        Configuration configuration = new BaseConfiguration();
+        configuration.addProperty(JarvisCore.LANGUAGE_CODE_KEY, VALID_LANGUAGE_CODE);
+        configuration.addProperty(JarvisCore.ORCHESTRATION_PATH_KEY, VALID_ORCHESTRATION_MODEL.eResource().getURI());
+        new JarvisCore(configuration);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void constructMissingLanguageCodeInConfiguration() {
+        Configuration configuration = new BaseConfiguration();
+        configuration.addProperty(JarvisCore.PROJECT_ID_KEY, VALID_PROJECT_ID);
+        configuration.addProperty(JarvisCore.ORCHESTRATION_PATH_KEY, VALID_ORCHESTRATION_MODEL.eResource().getURI());
+        new JarvisCore(configuration);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void constructMissingOrchestrationPathInConfiguration() {
+        Configuration configuration = new BaseConfiguration();
+        configuration.addProperty(JarvisCore.PROJECT_ID_KEY, VALID_PROJECT_ID);
+        configuration.addProperty(JarvisCore.LANGUAGE_CODE_KEY, VALID_LANGUAGE_CODE);
+        new JarvisCore(configuration);
+    }
+
+    @Test
+    public void constructValidConfiguration() {
+        Configuration configuration = new BaseConfiguration();
+        configuration.addProperty(JarvisCore.PROJECT_ID_KEY, VALID_PROJECT_ID);
+        configuration.addProperty(JarvisCore.LANGUAGE_CODE_KEY, VALID_LANGUAGE_CODE);
+        configuration.addProperty(JarvisCore.ORCHESTRATION_PATH_KEY, VALID_ORCHESTRATION_MODEL.eResource().getURI());
+        JarvisCore jarvisCore = new JarvisCore(configuration);
+        checkJarvisCore(jarvisCore);
+    }
+
+    @Test(expected = NullPointerException.class)
     public void constructNullProjectId() {
         new JarvisCore(null, VALID_LANGUAGE_CODE, VALID_ORCHESTRATION_MODEL);
     }
@@ -85,6 +154,12 @@ public class JarvisCoreTest {
     @Test(expected = NullPointerException.class)
     public void constructNullOrchestrationModel() {
         new JarvisCore(VALID_PROJECT_ID, VALID_LANGUAGE_CODE, null);
+    }
+
+    @Test
+    public void constructValid() {
+        JarvisCore jarvisCore = new JarvisCore(VALID_PROJECT_ID, VALID_LANGUAGE_CODE, VALID_ORCHESTRATION_MODEL);
+        checkJarvisCore(jarvisCore);
     }
 
     @Test(expected = JarvisException.class)
@@ -144,7 +219,7 @@ public class JarvisCoreTest {
      *
      * @param jarvisCore the {@link JarvisCore} instance to check
      */
-    private void checkJarvisCoreDialogFlowFields(JarvisCore jarvisCore) {
+    private void checkJarvisCore(JarvisCore jarvisCore) {
         /*
          * isNotNull() assertions are not soft, otherwise the runner does not print the assertion error and fails on
          * a NullPointerException in the following assertions.
