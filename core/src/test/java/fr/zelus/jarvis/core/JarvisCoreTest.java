@@ -111,7 +111,7 @@ public class JarvisCoreTest {
     public void constructMissingProjectIdInConfiguration() {
         Configuration configuration = new BaseConfiguration();
         configuration.addProperty(JarvisCore.LANGUAGE_CODE_KEY, VALID_LANGUAGE_CODE);
-        configuration.addProperty(JarvisCore.ORCHESTRATION_PATH_KEY, VALID_ORCHESTRATION_MODEL.eResource().getURI());
+        configuration.addProperty(JarvisCore.ORCHESTRATION_MODEL_KEY, VALID_ORCHESTRATION_MODEL);
         new JarvisCore(configuration);
     }
 
@@ -119,7 +119,7 @@ public class JarvisCoreTest {
     public void constructMissingLanguageCodeInConfiguration() {
         Configuration configuration = new BaseConfiguration();
         configuration.addProperty(JarvisCore.PROJECT_ID_KEY, VALID_PROJECT_ID);
-        configuration.addProperty(JarvisCore.ORCHESTRATION_PATH_KEY, VALID_ORCHESTRATION_MODEL.eResource().getURI());
+        configuration.addProperty(JarvisCore.ORCHESTRATION_MODEL_KEY, VALID_ORCHESTRATION_MODEL);
         new JarvisCore(configuration);
     }
 
@@ -136,7 +136,7 @@ public class JarvisCoreTest {
         Configuration configuration = new BaseConfiguration();
         configuration.addProperty(JarvisCore.PROJECT_ID_KEY, VALID_PROJECT_ID);
         configuration.addProperty(JarvisCore.LANGUAGE_CODE_KEY, VALID_LANGUAGE_CODE);
-        configuration.addProperty(JarvisCore.ORCHESTRATION_PATH_KEY, VALID_ORCHESTRATION_MODEL.eResource().getURI());
+        configuration.addProperty(JarvisCore.ORCHESTRATION_MODEL_KEY, VALID_ORCHESTRATION_MODEL);
         JarvisCore jarvisCore = new JarvisCore(configuration);
         checkJarvisCore(jarvisCore);
     }
@@ -160,6 +160,84 @@ public class JarvisCoreTest {
     public void constructValid() {
         JarvisCore jarvisCore = new JarvisCore(VALID_PROJECT_ID, VALID_LANGUAGE_CODE, VALID_ORCHESTRATION_MODEL);
         checkJarvisCore(jarvisCore);
+    }
+
+    @Test
+    public void constructValidDefaultModuleConstructor() {
+        /*
+         * Use another OrchestrationModel linking to the StubJarvisModuleDefaultConstructor stub class, that only
+         * defines a default constructor.
+         */
+        Module stubModule = ModuleFactory.eINSTANCE.createModule();
+        stubModule.setName("StubJarvisModuleDefaultConstructor");
+        stubModule.setJarvisModulePath("fr.zelus.jarvis.stubs.StubJarvisModuleDefaultConstructor");
+        Action stubAction = ModuleFactory.eINSTANCE.createAction();
+        stubAction.setName("StubJarvisAction");
+        // No parameters, keep it simple
+        stubModule.getActions().add(stubAction);
+        IntentDefinition stubIntentDefinition = IntentFactory.eINSTANCE.createIntentDefinition();
+        stubIntentDefinition.setName("Default Welcome Intent");
+        // No parameters, keep it simple
+        stubModule.getIntentDefinitions().add(stubIntentDefinition);
+        OrchestrationModel orchestrationModel = OrchestrationFactory.eINSTANCE.createOrchestrationModel();
+        OrchestrationLink link = OrchestrationFactory.eINSTANCE.createOrchestrationLink();
+        link.setIntent(stubIntentDefinition);
+        ActionInstance actionInstance = OrchestrationFactory.eINSTANCE.createActionInstance();
+        actionInstance.setAction(stubAction);
+        link.getActions().add(actionInstance);
+        orchestrationModel.getOrchestrationLinks().add(link);
+        JarvisCore jarvisCore = new JarvisCore(VALID_PROJECT_ID, VALID_LANGUAGE_CODE, orchestrationModel);
+    }
+
+    @Test(expected = JarvisException.class)
+    public void getOrchestrationModelInvalidType() {
+        JarvisCore jarvisCore = getValidJarvisCore();
+        OrchestrationModel orchestrationModel = jarvisCore.getOrchestrationModel(new Integer(2));
+    }
+
+    @Test(expected = JarvisException.class)
+    public void getOrchestrationModelFromInvalidString() {
+        JarvisCore jarvisCore = getValidJarvisCore();
+        OrchestrationModel orchestrationModel = jarvisCore.getOrchestrationModel("/tmp/test.xmi");
+    }
+
+    @Test(expected = JarvisException.class)
+    public void getOrchestrationModelFromInvalidURI() {
+        JarvisCore jarvisCore = getValidJarvisCore();
+        OrchestrationModel orchestrationModel = jarvisCore.getOrchestrationModel(URI.createURI("/tmp/test.xmi"));
+    }
+
+    @Test
+    public void getOrchestrationModelFromValidInMemory() {
+        JarvisCore jarvisCore = getValidJarvisCore();
+        OrchestrationModel orchestrationModel = jarvisCore.getOrchestrationModel(VALID_ORCHESTRATION_MODEL);
+        assertThat(orchestrationModel).as("Valid OrchestrationModel").isEqualTo(VALID_ORCHESTRATION_MODEL);
+    }
+
+    @Test
+    public void getOrchestrationModelFromValidString() {
+        JarvisCore jarvisCore = getValidJarvisCore();
+        OrchestrationModel orchestrationModel = jarvisCore.getOrchestrationModel(VALID_ORCHESTRATION_MODEL.eResource
+                ().getURI().toString());
+        assertThat(orchestrationModel).as("Not null OrchestrationModel").isNotNull();
+        /*
+         * Not enough, but comparing the entire content of the model is more complicated than it looks like.
+         */
+        assertThat(orchestrationModel.getOrchestrationLinks()).as("Valid OrchestrationLink size").hasSize
+                (VALID_ORCHESTRATION_MODEL.getOrchestrationLinks().size());
+    }
+
+    @Test
+    public void getOrchestrationModelFromValidURI() {
+        JarvisCore jarvisCore = getValidJarvisCore();
+        OrchestrationModel orchestrationModel = jarvisCore.getOrchestrationModel(VALID_ORCHESTRATION_MODEL.eResource
+                ().getURI());
+        assertThat(orchestrationModel).as("Not null OrchestrationModel").isNotNull();
+        /*
+         * Not enough, but comparing the entire content of the model is more complicated than it looks like.
+         */
+        assertThat(orchestrationModel.getOrchestrationLinks()).as("Valid OrchestrationLink size").hasSize
+                (VALID_ORCHESTRATION_MODEL.getOrchestrationLinks().size());
     }
 
     @Test(expected = JarvisException.class)
@@ -229,6 +307,9 @@ public class JarvisCoreTest {
                 (VALID_PROJECT_ID);
         softly.assertThat(jarvisCore.getDialogFlowApi().getLanguageCode()).as("Valid DialogFlowAPI language code")
                 .isEqualTo(VALID_LANGUAGE_CODE);
+        assertThat(jarvisCore.getOrchestrationModel()).as("Not null OrchestrationModel").isNotNull();
+        softly.assertThat(jarvisCore.getOrchestrationModel()).as("Valid OrchestrationModel").isEqualTo
+                (VALID_ORCHESTRATION_MODEL);
         assertThat(jarvisCore.getSessionName()).as("Not null SessionName").isNotNull();
         softly.assertThat(jarvisCore.getSessionName().getProject()).as("Valid SessionName project ID").isEqualTo
                 (VALID_PROJECT_ID);

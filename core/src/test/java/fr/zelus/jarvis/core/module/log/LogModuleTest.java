@@ -14,6 +14,7 @@ import fr.zelus.jarvis.orchestration.ActionInstance;
 import fr.zelus.jarvis.orchestration.OrchestrationFactory;
 import fr.zelus.jarvis.orchestration.OrchestrationPackage;
 import fr.zelus.jarvis.orchestration.ParameterValue;
+import org.apache.commons.configuration2.BaseConfiguration;
 import org.assertj.core.api.JUnitSoftAssertions;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EPackage;
@@ -42,7 +43,7 @@ public class LogModuleTest {
         EPackage.Registry.INSTANCE.put(OrchestrationPackage.eINSTANCE.getNsURI(), OrchestrationPackage.eINSTANCE);
         ResourceSet resourceSet = new ResourceSetImpl();
         resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
-        String file = LogModuleTest.class.getClassLoader().getResource("LogModule.xmi").getFile();
+        String file = LogModuleTest.class.getClassLoader().getResource("modules/LogModule.xmi").getFile();
         Resource moduleResource = resourceSet.getResource(URI.createURI(file), true);
         loadedModule = (Module) moduleResource.getContents().get(0);
 
@@ -54,7 +55,7 @@ public class LogModuleTest {
 
     @Before
     public void setUp() {
-        logModule = new LogModule();
+        logModule = new LogModule(new BaseConfiguration());
     }
 
     @Rule

@@ -9,6 +9,7 @@ import fr.zelus.jarvis.module.Module;
 import fr.zelus.jarvis.orchestration.ActionInstance;
 import fr.zelus.jarvis.orchestration.OrchestrationLink;
 import fr.zelus.jarvis.orchestration.OrchestrationModel;
+import org.apache.commons.configuration2.BaseConfiguration;
 import org.apache.commons.configuration2.Configuration;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -16,6 +17,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 
+import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -69,7 +71,7 @@ public class JarvisCore {
      *
      * @see #JarvisCore(Configuration)
      */
-    public static String ORCHESTRATION_PATH_KEY = "jarvis.orchestration.path";
+    public static String ORCHESTRATION_MODEL_KEY = "jarvis.orchestration.model";
 
     /**
      * Returns the globally registered instance of this class, if it exists.
@@ -83,6 +85,40 @@ public class JarvisCore {
         }
         return INSTANCE;
     }
+
+    /**
+     * Builds a {@link Configuration} holding the provided {@code projectId}, {@code languageCode}, and {@code
+     * orchestrationModel}.
+     * <p>
+     * This method is called by {@link #JarvisCore(String, String, OrchestrationModel)} to setup the
+     * {@link Configuration} that is forwarded to the base constructor {@link #JarvisCore(Configuration)}.
+     *
+     * @param projectId          the unique identifier of the DialogFlow project
+     * @param languageCode       the code of the language processed by DialogFlow
+     * @param orchestrationModel the {@link OrchestrationModel} defining the Intent to Action bindings
+     * @return the {@link Configuration} holding the provided {@code projectId}, {@code languageCode}, and {@code
+     * orchestrationModel}
+     * @see #JarvisCore(Configuration)
+     * @see #JarvisCore(String, String, OrchestrationModel)
+     */
+    protected static Configuration buildConfiguration(String projectId, String languageCode, OrchestrationModel
+            orchestrationModel) {
+        Configuration configuration = new BaseConfiguration();
+        configuration.addProperty(PROJECT_ID_KEY, projectId);
+        configuration.addProperty(LANGUAGE_CODE_KEY, languageCode);
+        configuration.addProperty(ORCHESTRATION_MODEL_KEY, orchestrationModel);
+        return configuration;
+    }
+
+    /**
+     * The {@link Configuration} used to initialize this class.
+     * <p>
+     * This {@link Configuration} is used to load and initialize modules, see
+     * {@link #loadJarvisModuleFromModuleModel(Module)} for more information on module loading.
+     *
+     * @see #loadJarvisModuleFromModuleModel(Module)
+     */
+    private Configuration configuration;
 
     /**
      * The {@link DialogFlowApi} used to access the DialogFlow framework and send user input for
@@ -138,54 +174,9 @@ public class JarvisCore {
      * <ul>
      * <li><b>dialogflow.projectId</b>: the unique identifier of the DialogFlow project</li>
      * <li><b>dialogflow.language</b>: the code of the language processed by DialogFlow</li>
-     * <li><b>jarvis.orchestration.path</b>: the path of the {@link OrchestrationModel} defining the Intent to
-     * Action bindings</li>
+     * <li><b>jarvis.orchestration.model</b>: the {@link OrchestrationModel} defining the Intent to
+     * Action bindings (or the string representing its location)</li>
      * </ul>
-     * <p>
-     * See {@link #JarvisCore(String, String, OrchestrationModel)} for more information on the required values.
-     *
-     * @param configuration the {@link Configuration} to construct the instance from
-     * @throws NullPointerException if the provided {@code configuration} is {@code null}
-     * @throws JarvisException      if the framework is not able to load the {@link OrchestrationModel} from the path
-     *                              associated to the <i>jarvis.orchestration.path</i> key
-     */
-    public JarvisCore(Configuration configuration) {
-        checkNotNull(configuration, "Cannot construct a jarvis instance from a null configuration");
-        String projectId = configuration.getString(PROJECT_ID_KEY);
-        String languageCode = configuration.getString(LANGUAGE_CODE_KEY);
-        String orchestrationModelUri = configuration.getString(ORCHESTRATION_PATH_KEY);
-        checkNotNull(orchestrationModelUri, "The configuration does not contain an orchestration model path (jarvis" +
-                ".orchestration.path");
-        ResourceSet resourceSet = new ResourceSetImpl();
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
-        Resource orchestrationModelResource = resourceSet.getResource(URI.createURI(orchestrationModelUri), true);
-        if (isNull(orchestrationModelResource)) {
-            String errorMessage = MessageFormat.format("Cannot load the provided orchestration model (uri: {0})",
-                    orchestrationModelUri);
-            Log.error(errorMessage);
-            throw new JarvisException(errorMessage);
-        }
-        if (orchestrationModelResource.getContents().isEmpty()) {
-            String errorMessage = MessageFormat.format("The provided orchestration model is empty (uri: {0})",
-                    orchestrationModelResource.getURI());
-            Log.error(errorMessage);
-            throw new JarvisException(errorMessage);
-        }
-        OrchestrationModel orchestrationModel = null;
-        try {
-            orchestrationModel = (OrchestrationModel) orchestrationModelResource.getContents().get(0);
-        } catch (ClassCastException e) {
-            String errorMessage = MessageFormat.format("The provided orchestration model does not contain a top-level" +
-                    " element with the type OrchestrationModel (uri: {0})", orchestrationModelResource.getURI());
-            Log.error(errorMessage);
-            throw new JarvisException(errorMessage, e);
-        }
-        initJarvisCore(projectId, languageCode, orchestrationModel);
-    }
-
-    /**
-     * Constructs a new {@link JarvisCore} instance with the provided {@code projectId}, {@code languageCode}, and
-     * {@code orchestrationModel}.
      * <p>
      * The provided {@link OrchestrationModel} defines the Intent to Action bindings that are executed by the
      * application. This constructor takes care of loading the {@link JarvisModule}s associated to the provided
@@ -193,48 +184,23 @@ public class JarvisCore {
      * <p>
      * Once constructed, this class can be globally retrieved by using {@link JarvisCore#getInstance()} method.
      * <p>
-     * <b>Note:</b> the {@link JarvisModule}s associated to the provided {@code orchestrationModel} have to be in the
-     * classpath in order to be dynamically loaded and instantiated.
+     * <b>Note:</b> the {@link JarvisModule}s associated to the provided {@code orchestrationModel} have to be
+     * in the classpath in order to be dynamically loaded and instantiated.
      *
-     * @param projectId          the unique identifier of the DialogFlow project
-     * @param languageCode       the code of the language processed by DialogFlow
-     * @param orchestrationModel the {@link OrchestrationModel} defining the Intent to Action bindings
-     * @throws NullPointerException if the provided {@code projectId}, {@code languageCode}, or {@code
-     *                              orchestrationModel} is {@code null}
-     * @see JarvisModule
+     * @param configuration the {@link Configuration} to construct the instance from
+     * @throws NullPointerException if the provided {@code configuration} is {@code null}
+     * @throws JarvisException      if the framework is not able to retrieve the {@link OrchestrationModel}
      * @see OrchestrationModel
      */
-    public JarvisCore(String projectId, String languageCode, OrchestrationModel orchestrationModel) {
-        initJarvisCore(projectId, languageCode, orchestrationModel);
-    }
-
-    /**
-     * Initializes this {@link JarvisCore} instance with the provided {@code projectId}, {@code languageCode}, and
-     * {@code orchestrationModel}.
-     * <p>
-     * This method gathers the common initialization steps that are called by the different {@link JarvisCore}
-     * constructors. It is responsible of checking the provided parameters' values, and creates the underlying
-     * {@link DialogFlowApi}, as well as the {@link JarvisCore} helpers ({@link OrchestrationService},
-     * {@link IntentDefinitionRegistry}, and {@link JarvisModuleRegistry}).
-     * <p>
-     * Note that using this external method is required because part of the constructors have to perform
-     * initialization operations (such as loading files or reading configurations) before calling the initialization
-     * logic.
-     *
-     * @param projectId          the unique identifier of the DialogFlow project
-     * @param languageCode       the code of the language processed by DialogFlow
-     * @param orchestrationModel the {@link OrchestrationModel} defining the Intent to Action bindings
-     * @throws NullPointerException if the provided {@code projectId}, {@code languageCode}, or {@code
-     *                              orchestrationModel} is {@code null}
-     * @see JarvisModule
-     * @see JarvisAction
-     * @see IntentDefinitionRegistry
-     * @see JarvisModuleRegistry
-     * @see OrchestrationService
-     */
-    private void initJarvisCore(String projectId, String languageCode, OrchestrationModel orchestrationModel) {
+    public JarvisCore(Configuration configuration) {
+        checkNotNull(configuration, "Cannot construct a jarvis instance from a null configuration");
+        this.configuration = configuration;
+        String projectId = configuration.getString(PROJECT_ID_KEY);
         checkNotNull(projectId, "Cannot construct a jarvis instance from a null projectId");
+        String languageCode = configuration.getString(LANGUAGE_CODE_KEY);
         checkNotNull(languageCode, "Cannot construct a jarvis instance from a null language code");
+        OrchestrationModel orchestrationModel = getOrchestrationModel(configuration.getProperty
+                (ORCHESTRATION_MODEL_KEY));
         checkNotNull(orchestrationModel, "Cannot construct a jarvis instance from a null orchestration model");
         this.dialogFlowApi = new DialogFlowApi(projectId, languageCode);
         this.sessionName = dialogFlowApi.createSession();
@@ -275,6 +241,103 @@ public class JarvisCore {
     }
 
     /**
+     * Constructs a new {@link JarvisCore} instance with the provided {@code projectId}, {@code languageCode}, and
+     * {@code orchestrationModel}.
+     * <p>
+     * The provided {@link OrchestrationModel} defines the Intent to Action bindings that are executed by the
+     * application. This constructor takes care of loading the {@link JarvisModule}s associated to the provided
+     * {@code orchestrationModel} and enables the corresponding {@link JarvisAction}s.
+     * <p>
+     * Once constructed, this class can be globally retrieved by using {@link JarvisCore#getInstance()} method.
+     * <p>
+     * <b>Note:</b> the {@link JarvisModule}s associated to the provided {@code orchestrationModel} have to be in the
+     * classpath in order to be dynamically loaded and instantiated.
+     *
+     * @throws NullPointerException if the provided {@code configuration} is {@code null}
+     * @throws JarvisException      if the framework is not able to retrieve the {@link OrchestrationModel}
+     * @see #JarvisCore(Configuration)
+     * @see OrchestrationModel
+     */
+    public JarvisCore(String projectId, String languageCode, OrchestrationModel orchestrationModel) {
+        this(buildConfiguration(projectId, languageCode, orchestrationModel));
+    }
+
+    /**
+     * Retrieves the {@link OrchestrationModel} from the provided {@code property}.
+     * <p>
+     * This method checks if the provided {@code property} is already an in-memory {@link OrchestrationModel}
+     * instance, or if it is defined by a {@link String} or an {@link URI} representing the path of the model. In
+     * that case, the method attempts to load the model at the provided location and returns it.
+     * <p>
+     * This method supports loading of model path defined by {@link String}s. Support for additional types is planned
+     * in the next releases.
+     *
+     * @param property the {@link Object} representing the {@link OrchestrationModel} to extract
+     * @return the {@link OrchestrationModel} from the provided {@code property}
+     * @throws JarvisException      if the provided {@code property} type is not handled, if the
+     *                              underlying {@link Resource} cannot be loaded or if it does not contain an
+     *                              {@link OrchestrationModel} top-level
+     *                              element, or if the loaded {@link OrchestrationModel} is empty.
+     * @throws NullPointerException if the provided {@code property} is {@code null}
+     */
+    protected OrchestrationModel getOrchestrationModel(Object property) {
+        checkNotNull(property, "Cannot retrieve the OrchestrationModel from the property null, please ensure it is " +
+                "set in the %s property of the jarvis configuration", ORCHESTRATION_MODEL_KEY);
+        if (property instanceof OrchestrationModel) {
+            return (OrchestrationModel) property;
+        } else {
+            URI uri;
+            if (property instanceof String) {
+                uri = URI.createURI((String) property);
+            } else if (property instanceof URI) {
+                uri = (URI) property;
+            } else {
+                // Unknown property type
+                String errorMessage = MessageFormat.format("Cannot retrieve the OrchestrationModel from the provided " +
+                        "property {0}, the property type ({1}) is not supported", property, property.getClass()
+                        .getSimpleName());
+                Log.error(errorMessage);
+                throw new JarvisException(errorMessage);
+            }
+            ResourceSet resourceSet = new ResourceSetImpl();
+            resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl
+                    ());
+            Resource orchestrationModelResource;
+            try {
+                orchestrationModelResource = resourceSet.getResource(uri, true);
+            } catch (Exception e) {
+                throw new JarvisException(MessageFormat.format("Cannot load the OrchestrationModel at the given " +
+                        "location: " +
+                        "{0}", uri.toString()), e);
+            }
+            if (isNull(orchestrationModelResource)) {
+                String errorMessage = MessageFormat.format("Cannot load the provided orchestration model (uri: {0})",
+                        uri);
+                Log.error(errorMessage);
+                throw new JarvisException(errorMessage);
+            }
+            if (orchestrationModelResource.getContents().isEmpty()) {
+                String errorMessage = MessageFormat.format("The provided orchestration model is empty (uri: {0})",
+                        orchestrationModelResource.getURI());
+                Log.error(errorMessage);
+                throw new JarvisException(errorMessage);
+            }
+            OrchestrationModel orchestrationModel = null;
+            try {
+                orchestrationModel = (OrchestrationModel) orchestrationModelResource.getContents().get(0);
+            } catch (ClassCastException e) {
+                String errorMessage = MessageFormat.format("The provided orchestration model does not contain a " +
+                        "top-level" +
+                        " element with the type OrchestrationModel (uri: {0})", orchestrationModelResource.getURI());
+                Log.error(errorMessage);
+                throw new JarvisException(errorMessage, e);
+            }
+            return orchestrationModel;
+        }
+    }
+
+
+    /**
      * Loads the {@link JarvisModule} defined by the provided {@link Module} definition.
      * <p>
      * This method searches in the classpath a {@link Class} matching the input {@link Module#getJarvisModulePath()}
@@ -288,18 +351,35 @@ public class JarvisCore {
      */
     private JarvisModule loadJarvisModuleFromModuleModel(Module moduleModel) throws JarvisException {
         Log.info("Loading JarvisModule {0}", moduleModel.getName());
+        Class<?> jarvisModuleClass = null;
         try {
-            return (JarvisModule) Class.forName(moduleModel.getJarvisModulePath()).newInstance();
+            jarvisModuleClass = Class.forName(moduleModel.getJarvisModulePath());
+            return (JarvisModule) jarvisModuleClass.getConstructor(Configuration.class).newInstance(this.configuration);
         } catch (ClassNotFoundException e) {
             String errorMessage = MessageFormat.format("Cannot load the module {0}, invalid path: {1}", moduleModel
                     .getName(), moduleModel.getJarvisModulePath());
             Log.error(errorMessage);
             throw new JarvisException(errorMessage, e);
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             String errorMessage = MessageFormat.format("Cannot construct an instance of the module {0}", moduleModel
                     .getName());
             Log.error(errorMessage);
             throw new JarvisException(errorMessage, e);
+        } catch (NoSuchMethodException e) {
+            // The configuration constructor does not exist, try to initialize the module using its default constructor
+            Log.warn("Cannot find the method {0}({1}), trying to initialize the module using its default " +
+                    "constructor", jarvisModuleClass.getSimpleName(), Configuration.class.getSimpleName());
+            try {
+                JarvisModule loadedModule = (JarvisModule) jarvisModuleClass.newInstance();
+                Log.warn("Module {0} loaded with its default constructor, the module will not be initialized with " +
+                        "jarvis configuration", jarvisModuleClass.getSimpleName());
+                return loadedModule;
+            } catch (IllegalAccessException | InstantiationException e1) {
+                String errorMessage = MessageFormat.format("Cannot construct an instance of the module {0} with the " +
+                        "default constructor", moduleModel.getName());
+                Log.error(errorMessage);
+                throw new JarvisException(e1);
+            }
         }
     }
 
@@ -339,6 +419,18 @@ public class JarvisCore {
      */
     public JarvisModuleRegistry getJarvisModuleRegistry() {
         return jarvisModuleRegistry;
+    }
+
+    /**
+     * Returns the {@link OrchestrationModel} associated to this class' {@link OrchestrationService}.
+     * <p>
+     * This method eases the access to the underlying {@link OrchestrationModel} for client applications.
+     *
+     * @return the {@link OrchestrationModel} associated to this class' {@link OrchestrationService}
+     * @see OrchestrationService#getOrchestrationModel()
+     */
+    public OrchestrationModel getOrchestrationModel() {
+        return orchestrationService.getOrchestrationModel();
     }
 
     /**
