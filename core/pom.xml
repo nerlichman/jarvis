@@ -79,6 +79,13 @@
             <artifactId>JDA</artifactId>
         </dependency>
 
+        <!-- WordPress -->
+
+        <dependency>
+            <groupId>com.afrozaar.wordpress</groupId>
+            <artifactId>wp-api-v2-client-java</artifactId>
+        </dependency>
+
         <!-- Utils -->
 
         <dependency>
@@ -189,6 +196,31 @@
                 <groupId>net.dv8tion</groupId>
                 <artifactId>JDA</artifactId>
                 <version>${jda.version}</version>
+            </dependency>
+
+            <!-- WordPress -->
+            <dependency>
+                <groupId>com.afrozaar.wordpress</groupId>
+                <artifactId>wp-api-v2-client-java</artifactId>
+                <version>${wp-api-v2.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>guava</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-classic</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-beanutils</groupId>
+                        <artifactId>commons-beanutils</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-beanutils</groupId>
+                        <artifactId>commons-beanutils-core</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <!-- Utils -->
