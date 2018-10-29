@@ -388,7 +388,9 @@ public class JarvisCoreTest extends AbstractJarvisTest {
         URI slackModulePathmapURI = URI.createURI(ModulesLoaderUtils.CORE_MODULE_PATHMAP + "SlackModule.xmi");
         assertThat(jarvisCore.orchestrationResourceSet.getResource(slackModulePathmapURI, false)).as("SlackModule " +
                 "pathmap resolved").isNotNull();
-
+        URI mailModulePathmapURI = URI.createURI(ModulesLoaderUtils.CORE_MODULE_PATHMAP + "MailModule.xmi");
+        assertThat(jarvisCore.orchestrationResourceSet.getResource(mailModulePathmapURI, false)).as("MailModule " +
+                "pathmap resolved").isNotNull();
     }
 
 }
