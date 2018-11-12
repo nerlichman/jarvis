@@ -86,6 +86,13 @@
             <artifactId>wp-api-v2-client-java</artifactId>
         </dependency>
 
+        <!-- Github -->
+
+        <dependency>
+            <groupId>com.jcabi</groupId>
+            <artifactId>jcabi-github</artifactId>
+        </dependency>
+
         <!-- Utils -->
 
         <dependency>
@@ -225,6 +232,19 @@
                     <exclusion>
                         <groupId>commons-beanutils</groupId>
                         <artifactId>commons-beanutils-core</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <!-- Github -->
+            <dependency>
+                <groupId>com.jcabi</groupId>
+                <artifactId>jcabi-github</artifactId>
+                <version>0.41</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>guava</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
