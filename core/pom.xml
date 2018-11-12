@@ -103,6 +103,13 @@
             <artifactId>google-api-client</artifactId>
         </dependency>
 
+        <!-- Github -->
+
+        <dependency>
+            <groupId>com.jcabi</groupId>
+            <artifactId>jcabi-github</artifactId>
+        </dependency>
+
         <!-- Utils -->
 
         <dependency>

@@ -10,7 +10,8 @@ import static fr.inria.atlanmod.commons.Preconditions.checkNotNull;
 /**
  * The concrete implementation of an {@link fr.zelus.jarvis.module.Action} definition.
  * <p>
- * A {@link JarvisAction} represents an atomic action that are automatically executed by the {@link JarvisCore}
+ * A {@link JarvisAction} represents an atomic action that are automatically executed by the
+ * {@link OrchestrationService}
  * component. Instances of this class are created by the associated {@link JarvisModule} from an input
  * {@link fr.zelus.jarvis.intent.RecognizedIntent}.
  * <p>
@@ -21,7 +22,7 @@ import static fr.inria.atlanmod.commons.Preconditions.checkNotNull;
  *
  * @param <T> the concrete {@link JarvisModule} subclass type containing the action
  * @see fr.zelus.jarvis.module.Action
- * @see JarvisCore
+ * @see OrchestrationService
  * @see JarvisModule
  */
 public abstract class JarvisAction<T extends JarvisModule> implements Callable<JarvisActionResult> {
@@ -39,10 +40,11 @@ public abstract class JarvisAction<T extends JarvisModule> implements Callable<J
     /**
      * The name of the variable to use to store the result of the {@link #call()} method.
      * <p>
-     * The value of this attribute is used by {@link JarvisCore#handleEvent(EventInstance, JarvisSession)} to store the
-     * result of each {@link JarvisAction} in the variable defined in the provided orchestration model.
+     * The value of this attribute is used by
+     * {@link OrchestrationService#handleEventInstance(EventInstance, JarvisSession)} to store
+     * the result of each {@link JarvisAction} in the variable defined in the provided orchestration model.
      *
-     * @see JarvisCore#handleEvent(EventInstance, JarvisSession)
+     * @see OrchestrationService#handleEventInstance(EventInstance, JarvisSession)
      * @see #getReturnVariable()
      */
     protected String returnVariable;
@@ -80,11 +82,11 @@ public abstract class JarvisAction<T extends JarvisModule> implements Callable<J
     /**
      * Return the name of the variable to use to store the result of the {@link #call()} method.
      * <p>
-     * This method is used by {@link JarvisCore#handleEvent(EventInstance, JarvisSession)} to store the result of each
-     * {@link JarvisAction} in the variable defined in the provided orchestration model.
+     * This method is used by {@link OrchestrationService#handleEventInstance(EventInstance, JarvisSession)}  to
+     * store the result of each {@link JarvisAction} in the variable defined in the provided orchestration model.
      *
      * @return the name of the variable to use to store the result of the {@link #call()} method
-     * @see JarvisCore#handleEvent(EventInstance, JarvisSession)
+     * @see OrchestrationService#handleEventInstance(EventInstance, JarvisSession)
      */
     public final String getReturnVariable() {
         return returnVariable;
@@ -100,21 +102,21 @@ public abstract class JarvisAction<T extends JarvisModule> implements Callable<J
     }
 
     /**
-     * Runs the action and returns its result wrapped in a {@link JarvisActionResult}.
+     * Runs the {@link JarvisAction} and returns its result wrapped in a {@link JarvisActionResult}.
      * <p>
-     * This method should not be called manually, and is handled by the {@link JarvisCore} component, that
-     * orchestrates the {@link JarvisAction}s returned by the registered {@link JarvisModule}s.
+     * This method should not be called manually, and is handled by the {@link OrchestrationService} component that
+     * manages and executes {@link JarvisAction}s.
      * <p>
      * This method does not throw any {@link Exception} if the underlying {@link JarvisAction}'s computation does not
-     * complete. Exceptions thrown during the underlying computation can be accessed through the
+     * complete. Exceptions thrown during the {@link JarvisAction}'s computation can be accessed through the
      * {@link JarvisActionResult#getThrownException()} method.
      *
      * @return the {@link JarvisActionResult} containing the raw result of the computation and monitoring information
-     * @see JarvisCore
+     * @see OrchestrationService
      * @see JarvisActionResult
      */
     @Override
-    public final JarvisActionResult call() {
+    public JarvisActionResult call() {
         Object computationResult = null;
         Exception thrownException = null;
         long before = System.currentTimeMillis();
@@ -141,7 +143,8 @@ public abstract class JarvisAction<T extends JarvisModule> implements Callable<J
      * This method should be overriden by subclasses to implement the {@link JarvisAction}'s computation logic.
      *
      * @return the raw result of the {@link JarvisAction}'s computation
+     * @throws Exception if an error occurred when computing the {@link JarvisAction}
      */
-    protected abstract Object compute();
+    protected abstract Object compute() throws Exception;
 
 }
