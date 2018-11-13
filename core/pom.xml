@@ -25,6 +25,7 @@
         <commons-beanutils.version>1.9.3</commons-beanutils.version>
         <wp-api-v2.version>4.8.1</wp-api-v2.version>
         <httpcomponents.version>4.4.10</httpcomponents.version>
+        <jcabi-github.version>0.41</jcabi-github.version>
     </properties>
 
     <repositories>
@@ -240,7 +241,7 @@
             <dependency>
                 <groupId>com.jcabi</groupId>
                 <artifactId>jcabi-github</artifactId>
-                <version>0.41</version>
+                <version>${jcabi-github.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>com.google.guava</groupId>
