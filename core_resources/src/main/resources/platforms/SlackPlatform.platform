@@ -11,6 +11,13 @@ providers {
 			sets parameter username
 		}
 	}
+	
+	input SlackWebhookIntentProvider {
+		creates context slack with lifespan 1 {
+			sets parameter channel
+			sets parameter username
+		}
+	}
 }
 
 actions {

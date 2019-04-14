@@ -7,6 +7,12 @@
       <parameters name="username"/>
     </outContexts>
   </eventProviderDefinitions>
+  <eventProviderDefinitions xsi:type="platform:InputProviderDefinition" name="SlackWebhookIntentProvider">
+    <outContexts name="slack" lifeSpan="1">
+      <parameters name="channel"/>
+      <parameters name="username"/>
+    </outContexts>
+  </eventProviderDefinitions>
   <eventProviderDefinitions xsi:type="platform:InputProviderDefinition" name="ChatProvider"/>
   <actions name="PostFileMessage">
     <parameters key="message"/>
