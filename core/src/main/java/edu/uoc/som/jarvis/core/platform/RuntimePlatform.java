@@ -82,7 +82,7 @@ public abstract class RuntimePlatform {
      *
      * @see #shutdown()
      */
-    protected Map<String, EventProviderThread> eventProviderMap;
+    protected List<EventProviderThread> eventProviderThreads;
 
 
     /**
@@ -105,7 +105,7 @@ public abstract class RuntimePlatform {
         this.jarvisCore = jarvisCore;
         this.configuration = configuration;
         this.actionMap = new HashMap<>();
-        this.eventProviderMap = new HashMap<>();
+        this.eventProviderThreads = new ArrayList<>();
     }
 
     /**
@@ -181,18 +181,8 @@ public abstract class RuntimePlatform {
         }
         Log.info("Starting RuntimeEventProvider {0}", eventProviderClass.getSimpleName());
         EventProviderThread eventProviderThread = new EventProviderThread(runtimeEventProvider);
-        eventProviderMap.put(eventProviderDefinition.getName(), eventProviderThread);
+        eventProviderThreads.add(eventProviderThread);
         eventProviderThread.start();
-    }
-
-    /**
-     * Returns {@link Map} containing the {@link EventProviderThread}s associated to this platform.
-     * <b>Note:</b> this method is protected for testing purposes, and should not be called by client code.
-     *
-     * @return the {@link Map} containing the {@link EventProviderThread}s associated to this platform
-     */
-    protected Map<String, EventProviderThread> getEventProviderMap() {
-        return eventProviderMap;
     }
 
     /**
@@ -309,8 +299,7 @@ public abstract class RuntimePlatform {
      * @see #disableAllActions()
      */
     public void shutdown() {
-        Collection<EventProviderThread> threads = this.eventProviderMap.values();
-        for (EventProviderThread thread : threads) {
+        for (EventProviderThread thread : eventProviderThreads) {
             thread.getRuntimeEventProvider().close();
             thread.interrupt();
             try {
@@ -320,7 +309,7 @@ public abstract class RuntimePlatform {
                         .getRuntimeEventProvider().getClass().getSimpleName());
             }
         }
-        this.eventProviderMap.clear();
+        this.eventProviderThreads.clear();
         /*
          * Disable the actions at the end, in case a running EventProviderThread triggers an action computation
          * before it is closed.

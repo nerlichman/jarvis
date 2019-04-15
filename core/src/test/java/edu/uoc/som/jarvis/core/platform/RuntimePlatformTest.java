@@ -88,7 +88,7 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
 
     @After
     public void tearDown() {
-        if(nonNull(runtimePlatform)) {
+        if (nonNull(runtimePlatform)) {
             runtimePlatform.shutdown();
         }
     }
@@ -121,11 +121,10 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         EventProviderDefinition eventProviderDefinition = PlatformFactory.eINSTANCE.createEventProviderDefinition();
         eventProviderDefinition.setName("StubInputProvider");
         runtimePlatform.startEventProvider(eventProviderDefinition);
-        assertThat(runtimePlatform.getEventProviderMap()).as("Not empty RuntimeEventProvider map").isNotEmpty();
-        assertThat(runtimePlatform.getEventProviderMap().get(eventProviderDefinition.getName())).as("Valid RuntimeEventProvider map " +
-                "entry").isNotNull();
-        RuntimePlatform.EventProviderThread eventProviderThread = runtimePlatform.getEventProviderMap().get
-                (eventProviderDefinition.getName());
+        assertThat(runtimePlatform.eventProviderThreads).as("Not empty RuntimeEventProvider list").isNotEmpty();
+        assertThat(runtimePlatform.eventProviderThreads.get(0).getRuntimeEventProvider().getClass().getSimpleName()).as("Valid " +
+                "RuntimeEventProvider list entry ").isEqualTo("StubInputProvider");
+        RuntimePlatform.EventProviderThread eventProviderThread = runtimePlatform.eventProviderThreads.get(0);
         softly.assertThat(eventProviderThread.getRuntimeEventProvider()).as("RuntimeEventProvider in thread is valid").isInstanceOf
                 (StubInputProvider.class);
         softly.assertThat(eventProviderThread.isAlive()).as("RuntimeEventProvider thread is alive").isTrue();
@@ -138,11 +137,10 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         EventProviderDefinition eventProviderDefinition = PlatformFactory.eINSTANCE.createEventProviderDefinition();
         eventProviderDefinition.setName("StubInputProviderNoConfigurationConstructor");
         runtimePlatform.startEventProvider(eventProviderDefinition);
-        assertThat(runtimePlatform.getEventProviderMap()).as("Not empty RuntimeEventProvider map").isNotEmpty();
-        assertThat(runtimePlatform.getEventProviderMap().get(eventProviderDefinition.getName())).as("Valid RuntimeEventProvider map " +
-                "entry").isNotNull();
-        RuntimePlatform.EventProviderThread eventProviderThread = runtimePlatform.getEventProviderMap().get
-                (eventProviderDefinition.getName());
+        assertThat(runtimePlatform.eventProviderThreads).as("Not empty RuntimeEventProvider list").isNotEmpty();
+        assertThat(runtimePlatform.eventProviderThreads.get(0).getRuntimeEventProvider().getClass().getSimpleName()).as("Valid " +
+                "RuntimeEventProvider list entry").isEqualTo("StubInputProviderNoConfigurationConstructor");
+        RuntimePlatform.EventProviderThread eventProviderThread = runtimePlatform.eventProviderThreads.get(0);
         softly.assertThat(eventProviderThread.getRuntimeEventProvider()).as("RuntimeEventProvider in thread is valid").isInstanceOf
                 (StubInputProviderNoConfigurationConstructor.class);
         softly.assertThat(eventProviderThread.isAlive()).as("RuntimeEventProvider thread is alive").isTrue();
@@ -155,11 +153,10 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         EventProviderDefinition eventProviderDefinition = PlatformFactory.eINSTANCE.createEventProviderDefinition();
         eventProviderDefinition.setName("StubJsonWebhookEventProvider");
         runtimePlatform.startEventProvider(eventProviderDefinition);
-        assertThat(runtimePlatform.getEventProviderMap()).as("Not empty RuntimeEventProvider map").isNotEmpty();
-        assertThat(runtimePlatform.getEventProviderMap().get(eventProviderDefinition.getName())).as("Valid RuntimeEventProvider map " +
-                "entry").isNotNull();
-        RuntimePlatform.EventProviderThread eventProviderThread = runtimePlatform.getEventProviderMap().get
-                (eventProviderDefinition.getName());
+        assertThat(runtimePlatform.eventProviderThreads).as("Not empty RuntimeEventProvider list").isNotEmpty();
+        assertThat(runtimePlatform.eventProviderThreads.get(0).getRuntimeEventProvider().getClass().getSimpleName()).as("Valid" +
+                " RuntimeEventProvider list entry").isEqualTo("StubJsonWebhookEventProvider");
+        RuntimePlatform.EventProviderThread eventProviderThread = runtimePlatform.eventProviderThreads.get(0);
         softly.assertThat(eventProviderThread.getRuntimeEventProvider()).as("RuntimeEventProvider in thread is valid").isInstanceOf
                 (StubJsonWebhookEventProvider.class);
         softly.assertThat(eventProviderThread.isAlive()).as("RuntimeEventProvider thread is alive").isTrue();
@@ -225,7 +222,8 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
     public void createRuntimeActionValidActionInstanceNoParameters() {
         ActionDefinition actionDefinition = getNoParameterActionDefinition();
         ActionInstance actionInstance = createActionInstanceFor(actionDefinition);
-        RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, new JarvisSession("sessionID"), executionContext);
+        RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, new JarvisSession(
+                "sessionID"), executionContext);
         assertThat(runtimeAction).as("Created RuntimeAction type is valid").isInstanceOf(StubRuntimeActionNoParameter
                 .class);
     }
@@ -239,7 +237,8 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         VariableAccess returnVariableAccess = commonFactory.createVariableAccess();
         returnVariableAccess.setReferredVariable(returnVariable);
         actionInstance.setReturnVariable(returnVariableAccess);
-        RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, new JarvisSession("session"), executionContext);
+        RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance,
+                new JarvisSession("session"), executionContext);
         assertThat(runtimeAction.getReturnVariable()).as("Valid return variable name").isEqualTo(returnVariable
                 .getName());
     }
@@ -292,7 +291,8 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         actionInstance.getValues().add(parameterValue);
         // Register the variable in the context to allow its access
         JarvisSession session = new JarvisSession("sessionID");
-//        session.getRuntimeContexts().setContextValue("variables", 5, "param", CompletableFuture.completedFuture("test"));
+//        session.getRuntimeContexts().setContextValue("variables", 5, "param", CompletableFuture.completedFuture
+//        ("test"));
         executionContext.setValue(paramVariable.getName(), "test");
 
         RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, session, executionContext);
@@ -321,11 +321,12 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         executionContext.setValue("param", Collections.singletonList("test"));
 
         RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, new JarvisSession(
-                "sessionID"),
+                        "sessionID"),
                 executionContext);
         assertThat(runtimeAction).as("Created RuntimeAction type is valid").isInstanceOf
                 (StubRuntimeActionTwoConstructors.class);
-        StubRuntimeActionTwoConstructors runtimeActionTwoConstructors = (StubRuntimeActionTwoConstructors) runtimeAction;
+        StubRuntimeActionTwoConstructors runtimeActionTwoConstructors =
+                (StubRuntimeActionTwoConstructors) runtimeAction;
         softly.assertThat(runtimeActionTwoConstructors.getListParam()).as("Constructor2 called").isNotNull();
         softly.assertThat(runtimeActionTwoConstructors.getListParam()).as("List parameter set").contains("test");
         softly.assertThat(runtimeActionTwoConstructors.getParam()).as("Constructor1 not called").isNull();
@@ -342,7 +343,8 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         ParameterValue parameterValue = executionFactory.createParameterValue();
         parameterValue.setExpression(variableAccess);
         actionInstance.getValues().add(parameterValue);
-        RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, new JarvisSession("sessionID"), executionContext);
+        RuntimeAction runtimeAction = runtimePlatform.createRuntimeAction(actionInstance, new JarvisSession(
+                "sessionID"), executionContext);
     }
 
     @Test(expected = JarvisException.class)
@@ -405,7 +407,7 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
         ActionInstance actionInstance = createActionInstanceFor(actionDefinition);
         runtimePlatform.shutdown();
         assertThat(runtimePlatform.getActions()).as("Empty Action map").isEmpty();
-        assertThat(runtimePlatform.getEventProviderMap()).as("Empty RuntimeEventProvider map").isEmpty();
+        assertThat(runtimePlatform.eventProviderThreads).as("Empty RuntimeEventProvider list").isEmpty();
     }
 
     private ActionDefinition getNoParameterActionDefinition() {
