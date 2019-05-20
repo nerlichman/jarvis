@@ -3,6 +3,11 @@ package edu.uoc.som.jarvis.core.session;
 import org.apache.commons.configuration2.BaseConfiguration;
 import org.apache.commons.configuration2.Configuration;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static fr.inria.atlanmod.commons.Preconditions.checkNotNull;
 
 /**
@@ -26,6 +31,15 @@ public class JarvisSession {
      * The {@link RuntimeContexts} used to store context-related variables.
      */
     private RuntimeContexts runtimeContexts;
+
+    /**
+     * The {@link Map} used to store session-related variables.
+     * <p>
+     * Session-related variables are persistent across intent and events, and can contain any {@link Object}. They
+     * are used to store results of specific actions, or set global variables that can be accessed along the
+     * conversation.
+     */
+    private Map<String, Object> sessionVariables;
 
     /**
      * Constructs a new, empty {@link JarvisSession} with the provided {@code sessionId}.
@@ -55,6 +69,7 @@ public class JarvisSession {
                 .getSimpleName(), Configuration.class.getSimpleName(), configuration);
         this.sessionId = sessionId;
         this.runtimeContexts = new RuntimeContexts(configuration);
+        this.sessionVariables = new HashMap<>();
     }
 
     /**
@@ -73,5 +88,61 @@ public class JarvisSession {
      */
     public RuntimeContexts getRuntimeContexts() {
         return runtimeContexts;
+    }
+
+    /**
+     * Store the provided {@code value} with the given {@code key} as a session variable.
+     * <p>
+     * Session-related variables are persistent across intent and events, and can contain any {@link Object}. They
+     * are used to store results of specific actions, or set global variables that can be accessed along the
+     * conversation.
+     * <p>
+     * <b>Note:</b> this method erases the previous value associated to the provided {@code key} with the new one.
+     *
+     * @param key   the key to store and retrieve the provided value
+     * @param value the value to store
+     * @throws NullPointerException if the provided {@code key} is {@code null}
+     */
+    public void store(String key, Object value) {
+        checkNotNull(key, "Cannot store the provided session variable %s (value=%s), please provide a non-null key",
+                key, value);
+        this.sessionVariables.put(key, value);
+    }
+
+    /**
+     * Store the provided {@code value} in the {@link List} associated to the provided {@code key} as a session
+     * variable.
+     * <p>
+     * This method creates a new {@link List} with the provided {@code value} if the session variables do not contain
+     * any record associated to the provided {@code key}.
+     * <p>
+     * <b>Note:</b> if the {@link JarvisSession} contains a single-valued entry for the provided {@code key} this
+     * value will be erased and replaced by the created {@link List}.
+     *
+     * @param key   the key of the {@link List} to store the provided {@code value}
+     * @param value the value to store in a {@link List}
+     */
+    public void storeList(String key, Object value) {
+        checkNotNull(key, "Cannot store the provided session variable %s (value=%s), please provide a non-null key",
+                key, value);
+        Object storedValue = this.sessionVariables.get(key);
+        List list;
+        if (storedValue instanceof List) {
+            list = (List) storedValue;
+        } else {
+            list = new ArrayList();
+            this.sessionVariables.put(key, list);
+        }
+        list.add(value);
+    }
+
+    /**
+     * Retrieves the session value associated to the provided {@code key}.
+     *
+     * @param key the key to retrieve the value for
+     * @return the session value associated to the provided {@code key} if it exists, {@code null} otherwise
+     */
+    public Object get(String key) {
+        return this.sessionVariables.get(key);
     }
 }

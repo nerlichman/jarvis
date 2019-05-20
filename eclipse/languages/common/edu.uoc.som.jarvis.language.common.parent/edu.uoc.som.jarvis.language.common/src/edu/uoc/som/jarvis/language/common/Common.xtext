@@ -31,7 +31,35 @@ IfExpression returns IfExpression:
 ;
 
 PlusOperation returns Expression:
-	OrOperation ({OperationCall.source = current} name='+' args+=Expression)*
+	MinusOperation ({OperationCall.source = current} name='+' args+=Expression)*
+;
+
+MinusOperation returns Expression:
+	GreaterOperation({OperationCall.source = current} name='-' args+=Expression)*
+;
+
+GreaterOperation returns Expression:
+	GreaterOrEqualOperation({OperationCall.source = current} name='>' args+=Expression)*
+;
+
+GreaterOrEqualOperation returns Expression:
+	LesserOperation({OperationCall.source = current} name='>=' args+=Expression)*
+;
+
+LesserOperation returns Expression:
+	LesserOrEqualOperation({OperationCall.source = current} name='<' args+=Expression)*
+;
+
+LesserOrEqualOperation returns Expression:
+	NotEqualOperation({OperationCall.source = current} name='<=' args+=Expression)*
+;
+
+NotEqualOperation returns Expression:
+	EqualOperation({OperationCall.source = current} name='!=' args+=Expression)*
+;
+
+EqualOperation returns Expression:
+	OrOperation({OperationCall.source = current} name='==' args+=Expression)*
 ;
 
 OrOperation returns Expression:
@@ -51,7 +79,7 @@ PropertyAccess returns Expression:
 ;
 
 Access returns Expression:
-	VariableAccess | ContextAccess
+	VariableAccess | ContextAccess | SessionAccess
 ;
 
 VariableAccess:
@@ -61,6 +89,11 @@ VariableAccess:
 ContextAccess:
 	'context' '(' contextName=ID ')'
 ;
+
+SessionAccess: 
+	{SessionAccess}'session'
+;
+
 
 Literal:
 	StringLiteral | NumberLiteral | BooleanLiteral

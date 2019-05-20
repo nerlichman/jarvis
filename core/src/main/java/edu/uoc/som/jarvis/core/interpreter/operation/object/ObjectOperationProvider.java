@@ -27,12 +27,30 @@ public class ObjectOperationProvider implements OperationProvider {
      */
     @Override
     public Operation getOperation(OperationCall abstractOperation) {
-        if(abstractOperation.getName().equals("+")) {
+        if (abstractOperation.getName().equals("+")) {
             return new AdditionOperation();
-        } else if(abstractOperation.getName().equals("or")) {
+        } else if (abstractOperation.getName().equals("-")) {
+            return new SubstractionOperation();
+        } else if (abstractOperation.getName().equals("or")) {
             return new OrOperation();
         } else if (abstractOperation.getName().equals("and")) {
             return new AndOperation();
+        } else if (abstractOperation.getName().equals(">")) {
+            return new GreaterOperation();
+        } else if(abstractOperation.getName().equals(">=")) {
+            return new GreaterOrEqualOperation();
+        } else if(abstractOperation.getName().equals("<")) {
+            return new LesserOperation();
+        } else if(abstractOperation.getName().equals("<=")) {
+            return new LesserOrEqualOperation();
+        } else if(abstractOperation.getName().equals("==")) {
+            return new EqualsOperation();
+        } else if(abstractOperation.getName().equals("!=")) {
+            return new NotEqualOperation();
+        } else if (abstractOperation.getName().equals("isNull")) {
+            return new IsNullOperation();
+        } else if (abstractOperation.getName().equals("nonNull")) {
+            return new NonNullOperation();
         } else {
             return new ObjectOperation(abstractOperation.getName());
         }

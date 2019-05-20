@@ -1,12 +1,12 @@
 jarvis
 ======
 [![License Badge](https://img.shields.io/badge/license-EPL%202.0-brightgreen.svg)](https://opensource.org/licenses/EPL-2.0)
-[![Build Status](https://travis-ci.com/SOM-Research/jarvis.svg?token=FBbqzUpaXaqnawrfdPca&branch=master)](https://travis-ci.com/SOM-Research/jarvis)
-[![codecov](https://codecov.io/gh/SOM-Research/jarvis/branch/master/graph/badge.svg)](https://codecov.io/gh/SOM-Research/jarvis)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4cdbb07fc78f4b0f9c3a5b5c254a4c2b)](https://www.codacy.com/app/gdaniel/jarvis?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=SOM-Research/jarvis&amp;utm_campaign=Badge_Grade)
-[![BCH compliance](https://bettercodehub.com/edge/badge/SOM-Research/jarvis?branch=master)](https://bettercodehub.com/)
-[![Javadoc Badge](https://img.shields.io/badge/javadoc-v1.0.0-brightgreen.svg)](https://som-research.github.io/jarvis-docs/releases/v1.0.0/doc/)
-[![Latest Javadoc Badge](https://img.shields.io/badge/javadoc-latest-brightgreen.svg)](https://som-research.github.io/jarvis-docs/releases/snapshot/doc/)
+[![Build Status](https://travis-ci.com/jarvis-bot-platform/jarvis.svg?branch=master)](https://travis-ci.com/jarvis-bot-platform/jarvis)
+[![codecov](https://codecov.io/gh/jarvis-bot-platform/jarvis/branch/master/graph/badge.svg)](https://codecov.io/gh/jarvis-bot-platform/jarvis)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4cdbb07fc78f4b0f9c3a5b5c254a4c2b)](https://www.codacy.com/app/gdaniel/jarvis?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=jarvis-bot-platform/jarvis&amp;utm_campaign=Badge_Grade)
+[![BCH compliance](https://bettercodehub.com/edge/badge/jarvis-bot-platform/jarvis?branch=master)](https://bettercodehub.com/)
+[![Javadoc Badge](https://img.shields.io/badge/javadoc-v1.0.0-brightgreen.svg)](https://jarvis-bot-platform.github.io/jarvis-docs/releases/v1.0.0/doc/)
+[![Latest Javadoc Badge](https://img.shields.io/badge/javadoc-latest-brightgreen.svg)](https://jarvis-bot-platform.github.io/jarvis-docs/releases/snapshot/doc/)
 [![Gitter Badge](https://img.shields.io/badge/chat-on%20gitter-404040.svg)](https://gitter.im/jarvis-development/Lobby)
 
 Jarvis is a generic bot platform that embeds a dedicated **chatbot-specific modeling language** to specify user intentions and received events, and bind them to computable actions. The modeled chatbot definition is handled by the **Jarvis Runtime Engine**, which automatically manages its deployment and execution.
@@ -43,7 +43,7 @@ Jarvis relies on *intent recognition providers* to translate user inputs into *i
 
 Jarvis provides a set of pre-packaged *platforms* that can be used in your execution models to compute *actions* and/or receive user *intents* (you don't know what is a Jarvis platform? You can have a look at [this section](Platform) to have an overview of the framework!).
 
-The table below shows the current platforms embedded with the framework, whether they define a *provider*, as well as their development status. Note that each platform has a specific issue label on our [issue tracker](https://github.com/SOM-Research/jarvis/issues), use them if you have a question related to a specific platform!
+The table below shows the current platforms embedded with the framework, whether they define a *provider*, as well as their development status. Note that each platform has a specific issue label on our [issue tracker](https://github.com/jarvis-bot-platform/jarvis/issues), use them if you have a question related to a specific platform!
 
 | Platform                                       | Provider           | Status            |
 | ---------------------------------------------- | ------------------ | ----------------- |

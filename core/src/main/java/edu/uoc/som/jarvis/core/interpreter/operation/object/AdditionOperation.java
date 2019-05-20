@@ -4,6 +4,7 @@ import edu.uoc.som.jarvis.core.interpreter.operation.Operation;
 
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Objects;
 
 import static fr.inria.atlanmod.commons.Preconditions.checkArgument;
 
@@ -32,9 +33,9 @@ public class AdditionOperation implements Operation {
         checkArgument(args.size() == 1, "Cannot compute + operation, expected 1 argument, found %s", args.size());
         if (source instanceof String) {
             /*
-             * Perform a concatenation
+             * Perform a concatenation (use Objects.toString to avoid NPEs)
              */
-            return ((String) source).concat(args.get(0).toString());
+            return ((String) source).concat(Objects.toString(args.get(0)));
         } else if (source instanceof Integer) {
             return (Integer) source + (Integer) args.get(0);
         } else {
