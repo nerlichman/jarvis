@@ -44,7 +44,7 @@ public class Jarvis {
      * @throws IllegalArgumentException if the provided {@code args} size is different than {@code 1}
      */
     public static void main(String[] args) {
-        if(isNull(args) || args.length != 1) {
+        if (isNull(args) || args.length != 1) {
             Log.error("Cannot start Jarvis, please provide as parameter the path of the Jarvis configuration file to " +
                     "use ({0})", CHECK_TUTORIAL_SENTENCE);
             return;
@@ -65,6 +65,11 @@ public class Jarvis {
         } catch (ConfigurationException e) {
             Log.error("Cannot load the configuration file at the given location {0}, please ensure the provided file " +
                     "is a valid properties file ({1})", propertiesFile.getPath(), CHECK_TUTORIAL_SENTENCE);
+        } catch (Exception e) {
+            Log.error("An error occurred when starting the {0}, trying to close started services",
+                    JarvisCore.class.getSimpleName());
+            // dirty, do something about it
+            e.printStackTrace();
         }
     }
 

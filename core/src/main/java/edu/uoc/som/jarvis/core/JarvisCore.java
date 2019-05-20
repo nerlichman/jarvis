@@ -2,6 +2,8 @@ package edu.uoc.som.jarvis.core;
 
 import edu.uoc.som.jarvis.Jarvis;
 import edu.uoc.som.jarvis.common.Instruction;
+import edu.uoc.som.jarvis.core.admin.AddExecutionRuleHandler;
+import edu.uoc.som.jarvis.core.admin.AddIntentHandler;
 import edu.uoc.som.jarvis.core.platform.RuntimePlatform;
 import edu.uoc.som.jarvis.core.platform.action.RuntimeAction;
 import edu.uoc.som.jarvis.core.platform.io.RuntimeEventProvider;
@@ -35,6 +37,7 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -172,6 +175,8 @@ public class JarvisCore {
      */
     private JarvisServer jarvisServer;
 
+    public Library adminLibrary;
+
     /**
      * Constructs a new {@link JarvisCore} instance from the provided {@code configuration}.
      * <p>
@@ -208,13 +213,31 @@ public class JarvisCore {
             this.jarvisServer = new JarvisServer(configuration);
             this.loadExecutionModel(executionModel);
             jarvisServer.start();
+
+            Resource adminResource = this.executionResourceSet.createResource(URI.createURI("AdminLibrary.xmi"));
+            try {
+                adminResource.load(Collections.emptyMap());
+                adminLibrary = (Library) adminResource.getContents().get(0);
+            } catch(FileNotFoundException e) {
+                adminLibrary = IntentFactory.eINSTANCE.createLibrary();
+                adminLibrary.setName("AdminLibrary");
+                adminResource.getContents().add(adminLibrary);
+                adminResource.save(Collections.emptyMap());
+            }
+            this.jarvisServer.registerRestEndpoint("/admin/addIntent", new AddIntentHandler(this));
+            this.jarvisServer.registerRestEndpoint("/admin/addRule", new AddExecutionRuleHandler(this));
+
             Log.info("Jarvis bot started");
         } catch (Throwable t) {
-            Log.error("An error occurred when starting the {0}, trying to close started services", this.getClass()
-                    .getSimpleName());
             stopServices();
-            throw t;
+            // dirty, do something about it
+            throw new RuntimeException(t);
         }
+    }
+
+    // todo fix this
+    public ResourceSet getExecutionResourceSet() {
+        return this.executionResourceSet;
     }
 
     /**
