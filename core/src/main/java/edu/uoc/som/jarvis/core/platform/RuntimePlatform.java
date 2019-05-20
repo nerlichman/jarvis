@@ -152,7 +152,7 @@ public abstract class RuntimePlatform {
      * {@link JarvisServer#registerWebhookEventProvider(WebhookEventProvider)}).
      *
      * @param eventProviderDefinition the {@link EventProviderDefinition} representing the
-     * {@link RuntimeEventProvider} to
+     *                                {@link RuntimeEventProvider} to
      *                                start
      * @throws NullPointerException if the provided {@code eventProviderDefinition} or {@code jarvisCore} is {@code
      *                              null}
@@ -171,6 +171,15 @@ public abstract class RuntimePlatform {
                 RuntimeEventProvider.class);
         RuntimeEventProvider runtimeEventProvider = Loader.constructRuntimeEventProvider(eventProviderClass, this,
                 configuration);
+        this.startEventProvider(runtimeEventProvider);
+    }
+
+    /**
+     * Starts the provided {@code runtimeEventProvider}.
+     *
+     * @param runtimeEventProvider the {@link RuntimeEventProvider} to start
+     */
+    public final void startEventProvider(RuntimeEventProvider runtimeEventProvider) {
         if (runtimeEventProvider instanceof WebhookEventProvider) {
             /*
              * Register the WebhookEventProvider in the JarvisServer
@@ -178,7 +187,7 @@ public abstract class RuntimePlatform {
             Log.info("Registering {0} in the {1}", runtimeEventProvider, JarvisServer.class.getSimpleName());
             jarvisCore.getJarvisServer().registerWebhookEventProvider((WebhookEventProvider) runtimeEventProvider);
         }
-        Log.info("Starting RuntimeEventProvider {0}", eventProviderClass.getSimpleName());
+        Log.info("Starting RuntimeEventProvider {0}", runtimeEventProvider.getClass().getSimpleName());
         EventProviderThread eventProviderThread = new EventProviderThread(runtimeEventProvider);
         eventProviderThreads.add(eventProviderThread);
         eventProviderThread.start();

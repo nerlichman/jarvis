@@ -23,6 +23,10 @@ public interface SlackUtils extends ChatUtils {
      */
     String SLACK_TOKEN_KEY = "jarvis.slack.token";
 
+    String SLACK_CLIENT_ID = "jarvis.slack.client.id";
+
+    String SLACK_CLIENT_SECRET = "jarvis.slack.client.secret";
+
     /**
      * The Slack API answer type representing a {@code message}.
      */
@@ -37,5 +41,10 @@ public interface SlackUtils extends ChatUtils {
      * The {@link RuntimeContexts} key used to store slack-related information.
      */
     String SLACK_CONTEXT_KEY = "slack";
+
+    /**
+     * The {@link RuntimeContexts} key used to store the slack team.
+     */
+    String SLACK_TEAM_CONTEXT_KEY = "team";
 
 }

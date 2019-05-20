@@ -266,75 +266,87 @@ public class SlackIntentProvider extends ChatIntentProvider<SlackPlatform> {
                     Log.info("Slack listener connected");
                 }
                 if (json.get("type").getAsString().equals(SlackUtils.MESSAGE_TYPE)) {
-                    /*
-                     * The message hasn't been sent by a bot
-                     */
-                    JsonElement channelObject = json.get("channel");
-                    if (nonNull(channelObject)) {
+                    JsonElement teamObject = json.get("team");
+                    if(nonNull(teamObject)) {
+                        String team = teamObject.getAsString();
                         /*
-                         * The message channel is set
+                         * The message hasn't been sent by a bot
                          */
-                        String channel = channelObject.getAsString();
-                        JsonElement userObject = json.get("user");
-                        if (nonNull(userObject)) {
+                        JsonElement channelObject = json.get("channel");
+                        if (nonNull(channelObject)) {
                             /*
-                             * The name of the user that sent the message
+                             * The message channel is set
                              */
-                            String user = userObject.getAsString();
-                            if (!user.equals(botId)) {
-                                JsonElement textObject = json.get("text");
-                                if (nonNull(textObject)) {
-                                    String text = textObject.getAsString();
-                                    if (!text.isEmpty()) {
-                                        Log.info("Received message {0} from user {1} (channel: {2})", text,
-                                                user, channel);
-                                        JarvisSession session = runtimePlatform.createSessionFromChannel(channel);
-                                        /*
-                                         * Call getRecognizedIntent before setting any context variable, the
-                                         * recognition triggers a decrement of all the context variables.
-                                         */
-                                        RecognizedIntent recognizedIntent = SlackIntentProvider.this
-                                                .getRecognizedIntent(text, session);
-                                        /*
-                                         * The slack-related values are stored in the local context with a
-                                         * lifespan count of 1: they are reset every time a message is
-                                         * received, and may cause consistency issues when using multiple
-                                         * IntentProviders.
-                                         */
-                                        session.getRuntimeContexts().setContextValue(SlackUtils
-                                                .SLACK_CONTEXT_KEY, 1, SlackUtils
-                                                .CHAT_CHANNEL_CONTEXT_KEY, channel);
-                                        session.getRuntimeContexts().setContextValue(SlackUtils
-                                                .SLACK_CONTEXT_KEY, 1, SlackUtils
-                                                .CHAT_USERNAME_CONTEXT_KEY, getUsernameFromUserId(user));
-                                        session.getRuntimeContexts().setContextValue(SlackUtils.SLACK_CONTEXT_KEY, 1,
-                                                SlackUtils.CHAT_RAW_MESSAGE_CONTEXT_KEY, text);
-                                        /*
-                                         * Copy the variables in the chat context (this context is inherited from the
-                                         * Chat platform)
-                                         */
-                                        session.getRuntimeContexts().setContextValue(ChatUtils.CHAT_CONTEXT_KEY, 1,
-                                                ChatUtils.CHAT_CHANNEL_CONTEXT_KEY, channel);
-                                        session.getRuntimeContexts().setContextValue(ChatUtils.CHAT_CONTEXT_KEY, 1,
-                                                ChatUtils.CHAT_USERNAME_CONTEXT_KEY, getUsernameFromUserId(user));
-                                        session.getRuntimeContexts().setContextValue(ChatUtils.CHAT_CONTEXT_KEY, 1,
-                                                ChatUtils.CHAT_RAW_MESSAGE_CONTEXT_KEY, text);
-                                        SlackIntentProvider.this.sendEventInstance(recognizedIntent, session);
+                            String channel = channelObject.getAsString();
+                            JsonElement userObject = json.get("user");
+                            if (nonNull(userObject)) {
+                                /*
+                                 * The name of the user that sent the message
+                                 */
+                                String user = userObject.getAsString();
+                                if (!user.equals(botId)) {
+                                    JsonElement textObject = json.get("text");
+                                    if (nonNull(textObject)) {
+                                        String text = textObject.getAsString();
+                                        if (!text.isEmpty()) {
+                                            Log.info("Received message {0} from user {1} (channel: {2})", text,
+                                                    user, channel);
+                                            JarvisSession session = runtimePlatform.createSessionFromChannel(channel);
+                                            /*
+                                             * Call getRecognizedIntent before setting any context variable, the
+                                             * recognition triggers a decrement of all the context variables.
+                                             */
+                                            RecognizedIntent recognizedIntent = SlackIntentProvider.this
+                                                    .getRecognizedIntent(text, session);
+                                            /*
+                                             * The slack-related values are stored in the local context with a
+                                             * lifespan count of 1: they are reset every time a message is
+                                             * received, and may cause consistency issues when using multiple
+                                             * IntentProviders.
+                                             */
+                                            session.getRuntimeContexts().setContextValue(SlackUtils
+                                                    .SLACK_CONTEXT_KEY, 1, SlackUtils
+                                                    .CHAT_CHANNEL_CONTEXT_KEY, channel);
+                                            session.getRuntimeContexts().setContextValue(SlackUtils
+                                                    .SLACK_CONTEXT_KEY, 1, SlackUtils
+                                                    .CHAT_USERNAME_CONTEXT_KEY, getUsernameFromUserId(user));
+                                            session.getRuntimeContexts().setContextValue(SlackUtils.SLACK_CONTEXT_KEY, 1,
+                                                    SlackUtils.CHAT_RAW_MESSAGE_CONTEXT_KEY, text);
+                                            /*
+                                             * Team is a Slack-specific feature, and is not set in the chat context.
+                                             */
+                                            session.getRuntimeContexts().setContextValue(SlackUtils.SLACK_CONTEXT_KEY
+                                                    , 1, SlackUtils.SLACK_TEAM_CONTEXT_KEY, team);
+                                            /*
+                                             * Copy the variables in the chat context (this context is inherited from
+                                              * the
+                                             * Chat platform)
+                                             */
+                                            session.getRuntimeContexts().setContextValue(ChatUtils.CHAT_CONTEXT_KEY, 1,
+                                                    ChatUtils.CHAT_CHANNEL_CONTEXT_KEY, channel);
+                                            session.getRuntimeContexts().setContextValue(ChatUtils.CHAT_CONTEXT_KEY, 1,
+                                                    ChatUtils.CHAT_USERNAME_CONTEXT_KEY, getUsernameFromUserId(user));
+                                            session.getRuntimeContexts().setContextValue(ChatUtils.CHAT_CONTEXT_KEY, 1,
+                                                    ChatUtils.CHAT_RAW_MESSAGE_CONTEXT_KEY, text);
+                                            SlackIntentProvider.this.sendEventInstance(recognizedIntent, session);
+                                        } else {
+                                            Log.warn("Received an empty message, skipping it");
+                                        }
                                     } else {
-                                        Log.warn("Received an empty message, skipping it");
+                                        Log.warn("The message does not contain a \"text\" field, skipping it");
                                     }
                                 } else {
-                                    Log.warn("The message does not contain a \"text\" field, skipping it");
+                                    Log.trace("Skipping {0}, the message was sent by this bot", json);
                                 }
                             } else {
-                                Log.trace("Skipping {0}, the message was sent by this bot", json);
+                                Log.warn("Skipping {0}, the message does not contain a \"user\" field",
+                                        json);
                             }
                         } else {
-                            Log.warn("Skipping {0}, the message does not contain a \"user\" field",
-                                    json);
+                            Log.warn("Skipping {0}, the message does not contain a \"channel\" field", json);
                         }
                     } else {
-                        Log.warn("Skipping {0}, the message does not contain a \"channel\" field", json);
+                        Log.warn("Skipping {0}, the message does not contain a \"team\" field", json);
                     }
                 } else {
                     Log.trace("Skipping {0}, the message type is not \"{1}\"", json, SlackUtils.MESSAGE_TYPE);

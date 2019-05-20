@@ -56,21 +56,22 @@ public class PostFileMessage extends PostMessage {
      * <p>
      * This constructor builds a {@link PostFileMessage} action that uploads the provided {@code file} to the given
      * Slack {@code channel}. To upload a {@link String} as a file see
-     * {@link #PostFileMessage(SlackPlatform, JarvisSession, String, String, String, String)}.
+     * {@link #PostFileMessage(SlackPlatform, JarvisSession, String, String, String, String, String)}.
      *
      * @param runtimePlatform the {@link SlackPlatform} containing this action
-     * @param session          the {@link JarvisSession} associated to this action
-     * @param message          the message to associate to the uploaded {@link File}
-     * @param file             the file to upload
-     * @param channel          the Slack channel to upload the {@link File} to
+     * @param session         the {@link JarvisSession} associated to this action
+     * @param message         the message to associate to the uploaded {@link File}
+     * @param file            the file to upload
+     * @param channel         the Slack channel to upload the {@link File} to
+     * @param team            the Slack team to post the message to
      * @throws NullPointerException     if the provided {@code runtimePlatform} or {@code session} is {@code null}
      * @throws IllegalArgumentException if the provided {@code message} or {@code channel} is {@code null} or empty,
      *                                  or if the provided {@code file} is {@code null} or does not exist
-     * @see #PostFileMessage(SlackPlatform, JarvisSession, String, String, String, String)
+     * @see #PostFileMessage(SlackPlatform, JarvisSession, String, String, String, String, String)
      */
     public PostFileMessage(SlackPlatform runtimePlatform, JarvisSession session, String message, File file, String
-            channel) {
-        super(runtimePlatform, session, message, channel);
+            channel, String team) {
+        super(runtimePlatform, session, message, channel, team);
         checkArgument(nonNull(file) && file.exists(), "Cannot construct a %s action with the provided file %s, " +
                 "expected a non-null and existing file", this.getClass().getSimpleName(), file);
         this.file = file;
@@ -85,19 +86,20 @@ public class PostFileMessage extends PostMessage {
      * {@link #PostFileMessage(SlackPlatform, JarvisSession, String, File, String)}.
      *
      * @param runtimePlatform the {@link SlackPlatform} containing this action
-     * @param session          the {@link JarvisSession} associated to this action
-     * @param title            the title of the file to upload
-     * @param message          the message to associate to the uploaded {@link File}
-     * @param content          the content of the file to upload
-     * @param channel          the Slack channel to upload the {@link File} to
+     * @param session         the {@link JarvisSession} associated to this action
+     * @param title           the title of the file to upload
+     * @param message         the message to associate to the uploaded {@link File}
+     * @param content         the content of the file to upload
+     * @param channel         the Slack channel to upload the {@link File} to
+     * @param team            the Slack team to post the message to
      * @throws NullPointerException     if the provided {@code runtimePlatform} or {@code session} is {@code null}
      * @throws IllegalArgumentException if the provided {@code title}, {@code message}, {@code content}, or {@code
      *                                  channel} is {@code null} or empty.
-     * @see #PostFileMessage(SlackPlatform, JarvisSession, String, File, String)
+     * @see #PostFileMessage(SlackPlatform, JarvisSession, String, File, String, String)
      */
     public PostFileMessage(SlackPlatform runtimePlatform, JarvisSession session, String title, String message, String
-            content, String channel) {
-        super(runtimePlatform, session, message, channel);
+            content, String channel, String team) {
+        super(runtimePlatform, session, message, channel, team);
         checkArgument(nonNull(title) && !title.isEmpty(), "Cannot construct a %s action with the provided title %s, " +
                 "expected a non-null and not empty String", this.getClass().getSimpleName(), title);
         checkArgument(nonNull(content) && !content.isEmpty(), "Cannot construct a %s action with the provided content" +
@@ -117,7 +119,7 @@ public class PostFileMessage extends PostMessage {
     @Override
     public Object compute() {
         FilesUploadRequest.FilesUploadRequestBuilder builder = FilesUploadRequest.builder();
-        builder.token(runtimePlatform.getSlackToken())
+        builder.token(runtimePlatform.getSlackToken(team))
                 .channels(Arrays.asList(channel))
                 .initialComment(message);
         if (nonNull(file)) {

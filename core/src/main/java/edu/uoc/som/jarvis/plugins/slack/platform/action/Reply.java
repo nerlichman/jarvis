@@ -30,7 +30,8 @@ public class Reply extends PostMessage {
      * <p>
      * This method searches in the provided {@link RuntimeContexts} for the value stored with the key
      * {@link SlackUtils#SLACK_CONTEXT_KEY}.{@link SlackUtils#SLACK_CHANNEL_CONTEXT_KEY}. Note that if
-     * the provided {@link RuntimeContexts} does not contain the requested value a {@link NullPointerException} is thrown.
+     * the provided {@link RuntimeContexts} does not contain the requested value a {@link NullPointerException} is
+     * thrown.
      *
      * @param context the {@link RuntimeContexts} to retrieve the Slack channel from
      * @return the Slack channel associated to the user input
@@ -51,17 +52,42 @@ public class Reply extends PostMessage {
     }
 
     /**
+     * Returns the Slack team associated to the user input.
+     * <p>
+     * This method searches in the provided {@link RuntimeContexts} for the value stored with the key
+     * {@link SlackUtils#SLACK_CONTEXT_KEY}.{@link SlackUtils#SLACK_TEAM_CONTEXT_KEY}. Note that if the provided
+     * {@link RuntimeContexts} does not contain the requested value a {@link NullPointerException} is thrown.
+     *
+     * @param context the {@link RuntimeContexts} to retrieve the Slack team from
+     * @return the Slack team associated to the user input
+     * @throws NullPointerException if the provided {@code context} is {@code null}, or if it does not contain the
+     *                              team information
+     * @see SlackUtils
+     */
+    public static String getTeam(RuntimeContexts context) {
+        checkNotNull(context, "Cannot retrieve the team from the provided %s %s",
+                RuntimeContexts.class.getSimpleName(), context);
+        Object teamValue = context.getContextValue(SlackUtils.SLACK_CONTEXT_KEY,
+                SlackUtils.SLACK_TEAM_CONTEXT_KEY);
+        checkNotNull(teamValue, "Cannot retrieve the Slack team from the provided context");
+        checkArgument(teamValue instanceof String, "Invalid Slack team type, expected %s, found %s",
+                String.class.getSimpleName(), teamValue.getClass().getSimpleName());
+        return (String) teamValue;
+    }
+
+    /**
      * Constructs a new {@link Reply} with the provided {@code runtimePlatform}, {@code session}, and {@code message}.
      *
      * @param runtimePlatform the {@link SlackPlatform} containing this action
-     * @param session          the {@link JarvisSession} associated to this action
-     * @param message          the message to post
+     * @param session         the {@link JarvisSession} associated to this action
+     * @param message         the message to post
      * @throws NullPointerException     if the provided {@code runtimePlatform} or {@code session} is {@code null}
      * @throws IllegalArgumentException if the provided {@code message} is {@code null} or empty
      * @see #getChannel(RuntimeContexts)
-     * @see PostMessage#PostMessage(SlackPlatform, JarvisSession, String, String)
+     * @see PostMessage#PostMessage(SlackPlatform, JarvisSession, String, String, String)
      */
     public Reply(SlackPlatform runtimePlatform, JarvisSession session, String message) {
-        super(runtimePlatform, session, message, getChannel(session.getRuntimeContexts()));
+        super(runtimePlatform, session, message, getChannel(session.getRuntimeContexts()),
+                getTeam(session.getRuntimeContexts()));
     }
 }

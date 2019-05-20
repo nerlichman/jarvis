@@ -106,7 +106,7 @@ public class RuntimePlatformTest extends AbstractJarvisTest {
 
     @Test(expected = NullPointerException.class)
     public void startEventProviderNullEventProviderDefinition() {
-        runtimePlatform.startEventProvider(null);
+        runtimePlatform.startEventProvider((EventProviderDefinition) null);
     }
 
     @Test(expected = JarvisException.class)

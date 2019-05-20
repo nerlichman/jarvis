@@ -5,9 +5,11 @@ import edu.uoc.som.jarvis.core.JarvisException;
 import edu.uoc.som.jarvis.core.platform.io.WebhookEventProvider;
 import fr.inria.atlanmod.commons.log.Log;
 import org.apache.http.*;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.entity.ContentType;
+import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestHandler;
@@ -129,11 +131,28 @@ class HttpHandler implements HttpRequestHandler {
 
         Log.info("Request type {0}", request.getClass().getSimpleName());
 
-        if (request instanceof HttpEntityEnclosingRequest) {
+        Header[] headers = request.getAllHeaders();
+        Log.info("Request Headers");
+        logHeaders(headers);
+
+        if(request instanceof BasicHttpRequest) {
+            String path = null;
+            try {
+                path = new URIBuilder(target).getPath();
+            } catch(URISyntaxException e) {
+                // clean this
+                Log.error("Cannot parse the URI {0}", target);
+            }
+            if(nonNull(path)) {
+                Log.info("found path {0}", path);
+                if (this.jarvisServer.isRestEndpoint(path)) {
+                    jarvisServer.notifyRestHandler(path, Arrays.asList(headers), parameters, null);
+                } else {
+                    Log.info("Cannot find an endpoint for {0}", target);
+                }
+            }
+        } else if (request instanceof HttpEntityEnclosingRequest) {
             HttpEntity entity = ((HttpEntityEnclosingRequest) request).getEntity();
-            Header[] headers = request.getAllHeaders();
-            Log.info("Request Headers");
-            logHeaders(headers);
             String contentEncoding = null;
             Header encodingHeader = entity.getContentEncoding();
             if (nonNull(encodingHeader) && encodingHeader.getElements().length > 0) {

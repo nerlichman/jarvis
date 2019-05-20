@@ -19,7 +19,8 @@ import static java.util.Objects.nonNull;
 /**
  * A {@link RuntimeAction} that posts a {@code message} to a given Slack {@code channel}.
  * <p>
- * This class relies on the {@link SlackPlatform}'s {@link com.github.seratch.jslack.Slack} client and Slack bot API token
+ * This class relies on the {@link SlackPlatform}'s {@link com.github.seratch.jslack.Slack} client and Slack bot API
+ * token
  * to connect to the Slack API and post messages.
  * <p>
  * <b>Note:</b> this class requires that its containing {@link SlackPlatform} has been loaded with a valid Slack bot API
@@ -33,22 +34,32 @@ public class PostMessage extends RuntimeMessageAction<SlackPlatform> {
     protected String channel;
 
     /**
+     * The Slack team to post the message to.
+     */
+    protected String team;
+
+    /**
      * Constructs a new {@link PostMessage} with the provided {@code runtimePlatform}, {@code session}, {@code
      * message} and {@code channel}.
      *
      * @param runtimePlatform the {@link SlackPlatform} containing this action
-     * @param session          the {@link JarvisSession} associated to this action
-     * @param message          the message to post
-     * @param channel          the Slack channel to post the message to
+     * @param session         the {@link JarvisSession} associated to this action
+     * @param message         the message to post
+     * @param channel         the Slack channel to post the message to
+     * @param team            the Slack team to post the message to
      * @throws NullPointerException     if the provided {@code runtimePlatform} or {@code session} is {@code null}
      * @throws IllegalArgumentException if the provided {@code message} or {@code channel} is {@code null} or empty.
      */
-    public PostMessage(SlackPlatform runtimePlatform, JarvisSession session, String message, String channel) {
+    public PostMessage(SlackPlatform runtimePlatform, JarvisSession session, String message, String channel,
+                       String team) {
         super(runtimePlatform, session, message);
 
         checkArgument(nonNull(channel) && !channel.isEmpty(), "Cannot construct a %s action with the provided " +
                 "channel %s, expected a non-null and not empty String", this.getClass().getSimpleName(), channel);
+        checkArgument(nonNull(team) && !team.isEmpty(), "Cannot construct a %s action with the provided team %s, " +
+                "expected a non-null and not empty String", this.getClass().getSimpleName(), team);
         this.channel = channel;
+        this.team = team;
     }
 
 
@@ -59,13 +70,13 @@ public class PostMessage extends RuntimeMessageAction<SlackPlatform> {
      * post the {@code message} to the given {@code channel}.
      *
      * @return {@code null}
-     * @throws IOException       if an I/O error occurred when sending the message
+     * @throws IOException     if an I/O error occurred when sending the message
      * @throws JarvisException if the provided token does not authenticate the bot
      */
     @Override
     public Object compute() throws IOException {
         ChatPostMessageRequest request = ChatPostMessageRequest.builder()
-                .token(runtimePlatform.getSlackToken())
+                .token(runtimePlatform.getSlackToken(team))
                 .channel(channel)
                 .text(message)
                 .unfurlLinks(true)

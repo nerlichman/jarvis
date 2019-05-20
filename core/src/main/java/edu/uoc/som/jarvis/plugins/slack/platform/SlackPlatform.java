@@ -1,16 +1,24 @@
 package edu.uoc.som.jarvis.plugins.slack.platform;
 
 import com.github.seratch.jslack.Slack;
+import com.github.seratch.jslack.api.methods.SlackApiException;
+import com.github.seratch.jslack.api.methods.request.team.TeamInfoRequest;
+import com.github.seratch.jslack.api.methods.response.team.TeamInfoResponse;
 import edu.uoc.som.jarvis.core.JarvisCore;
+import edu.uoc.som.jarvis.core.JarvisException;
 import edu.uoc.som.jarvis.core.platform.RuntimePlatform;
 import edu.uoc.som.jarvis.core.platform.action.RuntimeAction;
 import edu.uoc.som.jarvis.core.session.JarvisSession;
 import edu.uoc.som.jarvis.plugins.chat.platform.ChatPlatform;
 import edu.uoc.som.jarvis.plugins.slack.SlackUtils;
 import edu.uoc.som.jarvis.plugins.slack.platform.action.PostMessage;
+import edu.uoc.som.jarvis.plugins.slack.platform.io.SlackOAuthRestHandler;
 import org.apache.commons.configuration2.Configuration;
 
-import static fr.inria.atlanmod.commons.Preconditions.checkArgument;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
 import static java.util.Objects.nonNull;
 
 /**
@@ -29,15 +37,16 @@ import static java.util.Objects.nonNull;
 public class SlackPlatform extends ChatPlatform {
 
     /**
-     * The {@link String} representing the Slack bot API token.
+     * The {@link Map} storing the registered Slack bot API tokens.
      * <p>
-     * This token is retrieved from this class' {@link Configuration} constructor parameter, and is used to
-     * authenticate the bot and post messages through the Slack API.
+     * This {@link Map} is populated with a single entry from the provided {@link Configuration} if the bot is
+     * designed to be installed in a single Slack workspace, or from the {@link #registerTeamToken(String, String)}
+     * method when receiving new installation events.
      *
-     * @see #getSlackToken()
+     * @see #getSlackToken(String)
      * @see #SlackPlatform(JarvisCore, Configuration)
      */
-    private String slackToken;
+    private Map<String, String> slackTokens;
 
     /**
      * The {@link Slack} API client used to post messages.
@@ -47,33 +56,46 @@ public class SlackPlatform extends ChatPlatform {
     /**
      * Constructs a new {@link SlackPlatform} from the provided {@link JarvisCore} and {@link Configuration}.
      * <p>
-     * This constructor initializes the underlying {@link Slack} client with the Slack bot API token retrieved from
-     * the {@link Configuration}.
-     * <p>
-     * <b>Note:</b> {@link SlackPlatform} requires a valid Slack bot API token to be initialized, and calling the
-     * default constructor will throw an {@link IllegalArgumentException} when looking for the Slack bot API token.
+     * The provided {@link Configuration} can contain a Slack bot token used to setup an initial Slack team and
+     * access token. This is used in development environments to quickly prototype bots. Note that the
+     * {@link SlackPlatform} accepts multiple access tokens that can be registered through the
+     * {@link #registerTeamToken(String, String)} method.
      *
      * @param jarvisCore    the {@link JarvisCore} instance associated to this runtimePlatform
-     * @param configuration the {@link Configuration} used to retrieve the Slack bot API token
-     * @throws NullPointerException     if the provided {@code jarvisCore} or {@code configuration} is {@code null}
-     * @throws IllegalArgumentException if the provided Slack bot API token is {@code null} or empty
+     * @param configuration the {@link Configuration} used to initialize the {@link SlackPlatform}
+     * @throws NullPointerException if the provided {@code jarvisCore} or {@code configuration} is {@code null}
+     * @throws JarvisException      if the provided {@code configuration} contains an invalid Slack bot token
      */
     public SlackPlatform(JarvisCore jarvisCore, Configuration configuration) {
         super(jarvisCore, configuration);
-        slackToken = configuration.getString(SlackUtils.SLACK_TOKEN_KEY);
-        checkArgument(nonNull(slackToken) && !slackToken.isEmpty(), "Cannot construct a SlackPlatform from the " +
-                "provided token %s, please ensure that the jarvis configuration contains a valid Slack bot API token " +
-                "associated to the key %s", slackToken, SlackUtils.SLACK_TOKEN_KEY);
+        slackTokens = new HashMap<>();
         slack = new Slack();
+        String localSlackToken = configuration.getString(SlackUtils.SLACK_TOKEN_KEY);
+        if (nonNull(localSlackToken)) {
+            try {
+                TeamInfoResponse teamInfoResponse =
+                        slack.methods().teamInfo(TeamInfoRequest.builder().token(localSlackToken).build());
+                String teamId = teamInfoResponse.getTeam().getId();
+                this.registerTeamToken(teamId, localSlackToken);
+            } catch (SlackApiException | IOException e) {
+                throw new JarvisException("Cannot access the slack team from the provided token, see attached " +
+                        "exception", e);
+            }
+        }
+        String clientId = configuration.getString(SlackUtils.SLACK_CLIENT_ID);
+        String clientSecret = configuration.getString(SlackUtils.SLACK_CLIENT_SECRET);
+
+        this.jarvisCore.getJarvisServer().registerRestEndpoint("/slack", new SlackOAuthRestHandler(this, clientId,
+                clientSecret));
     }
 
     /**
-     * Returns the Slack bot API token used to initialize this class.
+     * Returns the Slack bot API token associated to the provided {@code teamId}.
      *
-     * @return the Slack bot API token used to initialize this class
+     * @return the Slack bot API token associated to the provided {@code teamId} if it exists, {@code null} otherwise
      */
-    public String getSlackToken() {
-        return slackToken;
+    public String getSlackToken(String teamId) {
+        return slackTokens.get(teamId);
     }
 
     /**
@@ -83,6 +105,17 @@ public class SlackPlatform extends ChatPlatform {
      */
     public Slack getSlack() {
         return slack;
+    }
+
+    /**
+     * Registers the provided {@code token} used to access the given {@code teamId}.
+     *
+     * @param teamId the identifier of the team that can be accessed by the provided {@code token}
+     * @param token  the Slack access token
+     * @see #getSlackToken(String)
+     */
+    public void registerTeamToken(String teamId, String token) {
+        this.slackTokens.put(teamId, token);
     }
 
     /**

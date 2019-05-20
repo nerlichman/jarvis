@@ -40,6 +40,7 @@ public class ReplyFileMessage extends PostFileMessage {
      * @see PostFileMessage#PostFileMessage(SlackPlatform, JarvisSession, String, File, String)
      */
     public ReplyFileMessage(SlackPlatform runtimePlatform, JarvisSession session, String message, File file) {
-        super(runtimePlatform, session, message, file, Reply.getChannel(session.getRuntimeContexts()));
+        super(runtimePlatform, session, message, file, Reply.getChannel(session.getRuntimeContexts()),
+                Reply.getTeam(session.getRuntimeContexts()));
     }
 }
